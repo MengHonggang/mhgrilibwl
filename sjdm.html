@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>班级点名 · 纯净布局 · 无数字姓名</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: linear-gradient(145deg, #d9e2ef 0%, #c2d2e6 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+        }
+        .card {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 48px;
+            box-shadow: 0 20px 40px -12px rgba(0, 20, 40, 0.4), inset 0 1px 3px rgba(255,255,255,0.8);
+            padding: 24px 20px;
+            border: 1px solid rgba(255,255,255,0.7);
+        }
+        h1 {
+            margin: 0 0 16px 0;
+            font-weight: 700;
+            font-size: 2.2rem;
+            letter-spacing: -0.5px;
+            color: #0f2c40;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+        }
+        h1 small {
+            font-size: 1rem;
+            font-weight: 500;
+            background: #1f4b6e;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 40px;
+            box-shadow: inset 0 -2px 0 #0e3147;
+            white-space: nowrap;
+        }
+
+        /* 滑块卡片 (人数设置) */
+        .slider-card {
+            background: #d1deedb8;
+            border-radius: 44px;
+            padding: 20px 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.9);
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border-radius: 80px;
+            padding: 10px 20px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.03);
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .slider-row label {
+            font-weight: 700;
+            color: #0f3b58;
+            font-size: 1.3rem;
+            letter-spacing: -0.2px;
+        }
+        .slider-row .slider-value {
+            font-weight: 800;
+            font-size: 1.6rem;
+            color: #0c4c78;
+            min-width: 3rem;
+            text-align: center;
+        }
+        .slider-row input[type=range] {
+            flex: 2;
+            min-width: 200px;
+            height: 48px;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        .slider-row input[type=range]::-webkit-slider-runnable-track {
+            height: 10px;
+            background: #bdd1e8;
+            border-radius: 20px;
+            box-shadow: inset 0 2px 4px #8ca3be;
+        }
+        .slider-row input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 32px;
+            height: 32px;
+            background: white;
+            border-radius: 50%;
+            margin-top: -11px;
+            box-shadow: 0 6px 12px #1d3f60;
+            border: 2px solid #1f5b88;
+            cursor: pointer;
+        }
+
+        /* 主要按钮样式 */
+        .primary-btn {
+            background: #1d4b6e;
+            border: none;
+            color: white;
+            font-weight: 700;
+            font-size: 1.5rem;
+            padding: 18px 24px;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 12px 22px -10px #123e5a, 0 4px 8px rgba(0,0,0,0.1);
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border: 1px solid #6b9bc0;
+            letter-spacing: 1px;
+            width: 100%;
+            margin-bottom: 20px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .primary-btn:active {
+            transform: scale(0.97);
+            background: #123a53;
+            box-shadow: 0 6px 12px -6px #0b2638;
+        }
+        .primary-btn:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(0.5);
+        }
+
+        /* 结果区域 */
+        .result-area {
+            background: #ffffffdd;
+            border-radius: 48px;
+            padding: 24px 18px;
+            margin-bottom: 28px;
+            border: 2px solid white;
+            box-shadow: inset 0 2px 10px #bacde2;
+        }
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1b4e70;
+            margin-bottom: 16px;
+            padding-left: 8px;
+        }
+        .name-badge-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px 16px;
+            min-height: 60px;
+        }
+        .name-badge {
+            background: linear-gradient(145deg, #1f6090, #113c5c);
+            color: white;
+            font-size: 1.6rem;
+            font-weight: 700;
+            padding: 14px 28px;
+            border-radius: 50px;
+            box-shadow: 0 8px 18px -10px #0b2e45, 0 0 0 2px #ffffffcc inset;
+            letter-spacing: 1px;
+            flex: 0 1 auto;
+        }
+
+        /* 统计网格 (位置移动但样式不变) */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            background: #ffffffb8;
+            border-radius: 32px;
+            padding: 20px 18px;
+            margin: 12px 0 24px 0;
+            border: 1px solid #ffffff;
+            box-shadow: 0 8px 16px -10px #819eb3;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #eef2f8;
+            padding: 10px 16px;
+            border-radius: 60px;
+            font-weight: 500;
+            border: 1px solid white;
+        }
+        .stat-label {
+            color: #1e3c55;
+            font-size: 1rem;
+        }
+        .stat-value {
+            background: #1e3f5a;
+            color: white;
+            padding: 5px 16px;
+            border-radius: 40px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        /* 下方按钮组 (重置 + 显示开关) */
+        .bottom-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .secondary-btn {
+            background: #4d6275;
+            border: none;
+            color: white;
+            font-weight: 700;
+            font-size: 1.3rem;
+            padding: 16px 24px;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 8px 18px -8px #2c4053, 0 4px 8px rgba(0,0,0,0.1);
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border: 1px solid #8aa0b5;
+            width: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .secondary-btn:active {
+            transform: scale(0.97);
+            background: #3f5368;
+        }
+        .secondary-btn:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .toggle-btn {
+            background: #3f6b5c;
+            border-color: #7aa58f;
+        }
+
+        /* 表格包装 (默认隐藏) */
+        .table-wrapper {
+            max-height: 340px;
+            overflow-y: auto;
+            border-radius: 36px;
+            background: #e4edf9;
+            box-shadow: inset 0 4px 12px #afc4db, 0 8px 20px -16px #142f42;
+            padding: 6px 4px;
+            margin-bottom: 16px;
+            -webkit-overflow-scrolling: touch;
+            transition: all 0.2s ease;
+        }
+        .hidden {
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 28px;
+            overflow: hidden;
+        }
+        th {
+            background: #1a3f5c;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 16px 8px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        td {
+            padding: 14px 8px;
+            border-bottom: 1px solid #c8d9ee;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        .name-col {
+            font-weight: 600;
+            color: #10344c;
+            text-align: left;
+            padding-left: 18px;
+        }
+        .count-col {
+            font-weight: 700;
+            color: #14415e;
+        }
+        .zero-count {
+            background-color: #ecf5ff;
+        }
+
+        .footer-note {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            font-size: 0.95rem;
+            color: #1f4a69;
+        }
+        .tip {
+            background: #dae9fa;
+            padding: 8px 22px;
+            border-radius: 40px;
+            font-weight: 500;
+        }
+
+        @media screen and (max-width: 480px) {
+            .card { padding: 16px; border-radius: 36px; }
+            h1 { font-size: 1.9rem; }
+            h1 small { font-size: 0.9rem; }
+            .stats-grid { gap: 8px; padding: 16px; }
+            .stat-item { padding: 8px 12px; }
+            .stat-label { font-size: 0.9rem; }
+            .stat-value { font-size: 1rem; padding: 4px 12px; min-width: 50px; }
+            .slider-row label { font-size: 1.2rem; }
+            .slider-row .slider-value { font-size: 1.4rem; }
+            .primary-btn { font-size: 1.3rem; padding: 16px 20px; }
+            .secondary-btn { font-size: 1.2rem; padding: 14px 20px; }
+            .name-badge { font-size: 1.4rem; padding: 12px 22px; }
+            th, td { padding: 12px 4px; font-size: 1rem; }
+            .name-col { padding-left: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="card" id="appContainer">
+    <h1>
+        📢 高二(8)班均衡轮盘
+        <small>10% 重复· 动态概率</small>
+    </h1>
+
+    <!-- 1. 人数设置滑块 (最上方) -->
+    <div class="slider-card">
+        <div class="slider-row">
+            <label>每次人数</label>
+            <input type="range" id="pickSlider" min="1" value="1" step="1">
+            <span class="slider-value" id="sliderDisplay">1</span>
+        </div>
+    </div>
+
+    <!-- 2. 开始点名按钮 -->
+    <button id="pickBtn" class="primary-btn">🎲 谁是幸运者</button>
+
+    <!-- 3. 本次被点学生名单 -->
+    <div class="result-area">
+        <div class="result-title">📋 本次被抽中的同学</div>
+        <div class="name-badge-container" id="resultContainer">
+            <!-- 动态插入名字卡片 -->
+        </div>
+    </div>
+
+    <!-- 4. 统计数据网格 (四个数据) -->
+    <div class="stats-grid">
+        <div class="stat-item"><span class="stat-label">👥 总人数</span><span class="stat-value" id="totalCount">0</span></div>
+        <div class="stat-item"><span class="stat-label">✅ 已点过</span><span class="stat-value" id="usedCount">0</span></div>
+        <div class="stat-item"><span class="stat-label">🆕 从未点</span><span class="stat-value" id="unusedCount">0</span></div>
+        <div class="stat-item"><span class="stat-label">🔁 总点名</span><span class="stat-value" id="totalPicks">0</span></div>
+    </div>
+
+    <!-- 5. 重置所有计数按钮 和 6. 显示名单开关 (垂直排列) -->
+    <div class="bottom-buttons">
+        <button id="resetBtn" class="secondary-btn">⟲ 重置所有计数</button>
+        <button id="toggleTableBtn" class="secondary-btn toggle-btn">📋 显示名单</button>
+    </div>
+
+    <!-- 名单表格 (默认隐藏) -->
+    <div class="table-wrapper hidden" id="tableWrapper">
+        <table id="studentTable">
+            <thead>
+                <tr><th>姓名</th><th>被点次数</th></tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- JS 填充 -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer-note">
+        <span class="tip">✨ 全员覆盖前 ≈10% 重复点名 · 次数越少概率越大</span>
+        <span>💾 自动保存</span>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ---------- 原始名单 (保留原始含数字版本，用于内部区分) ----------
+    const RAW_NAMES = [
+        "丁方舟", "周烨冉", "郝景博", "刘鑫钰", "李云鹤", "杨雨桐", "郭鑫傲", "周宇航", "邵睿阳", "崔珂尘",
+        "黄雨乐", "解嘉乐", "魏雨馨", "柯慧东", "周俊杰", "陈一鸣", "李文博8", "李玟君", "杜恒毅", "杜子行",
+        "杨守暄", "丁后羿", "王昱楠", "卜羽凡", "崔芯雅", "侯光烨", "王子仲", "邱凯强", "刘芮妍", "张艺菲",
+        "耿奥洋", "神萱萱", "陈鹏宇", "高俊熙", "孙佳怡", "孙嘉骏", "高梓萱", "贾德豪", "张兆祺", "单绍智",
+        "罗琪", "张宇佳", "徐珑睿", "许俊杰", "胡佳音", "黄琬茹", "李承恩", "陈静如", "贾舒然", "高名赫",
+        "薛涵月", "王子华", "孙智康", "厉妙雅", "刘桢熙", "李浩然1", "刘锦诺", "纵琳娜", "徐传恒", "谢可馨",
+        "王绍鹏", "胡雨蒙", "李曼", "黄聪杰", "王乙沫", "夏麒翔", "单诗嘉"
+    ];
+
+    // 生成显示姓名：去掉末尾数字 (保留汉字部分)
+    function getDisplayName(original) {
+        return original.replace(/\d+$/, '');
+    }
+
+    // ---------- 全局状态 ----------
+    let students = [];                // 对象数组: { originalName, displayName, count }
+    let currentPickCount = 1;
+    let isPicking = false;
+
+    // DOM 元素
+    const totalSpan = document.getElementById('totalCount');
+    const usedSpan = document.getElementById('usedCount');
+    const unusedSpan = document.getElementById('unusedCount');
+    const totalPicksSpan = document.getElementById('totalPicks');
+    const pickSlider = document.getElementById('pickSlider');
+    const sliderDisplay = document.getElementById('sliderDisplay');
+    const pickBtn = document.getElementById('pickBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const toggleTableBtn = document.getElementById('toggleTableBtn');
+    const tableWrapper = document.getElementById('tableWrapper');
+    const tableBody = document.getElementById('tableBody');
+    const resultContainer = document.getElementById('resultContainer');
+
+    // ---------- 加载/保存 (基于原始顺序存储counts) ----------
+    function loadFromStorage() {
+        const stored = localStorage.getItem('class_pick_counts_no_voice');
+        if (stored) {
+            try {
+                const counts = JSON.parse(stored);
+                if (Array.isArray(counts) && counts.length === RAW_NAMES.length) {
+                    students = RAW_NAMES.map((originalName, idx) => ({
+                        originalName: originalName,
+                        displayName: getDisplayName(originalName),
+                        count: counts[idx] || 0
+                    }));
+                    return;
+                }
+            } catch (e) {}
+        }
+        // 默认全0
+        students = RAW_NAMES.map(originalName => ({
+            originalName: originalName,
+            displayName: getDisplayName(originalName),
+            count: 0
+        }));
+    }
+
+    function saveToStorage() {
+        const counts = students.map(s => s.count);
+        localStorage.setItem('class_pick_counts_no_voice', JSON.stringify(counts));
+    }
+
+    // ---------- 渲染表格和统计 (使用displayName) ----------
+    function renderTable() {
+        let totalPicks = 0;
+        let used = 0;
+        for (let s of students) {
+            totalPicks += s.count;
+            if (s.count > 0) used++;
+        }
+        const unused = students.length - used;
+        totalSpan.innerText = students.length;
+        usedSpan.innerText = used;
+        unusedSpan.innerText = unused;
+        totalPicksSpan.innerText = totalPicks;
+
+        let html = '';
+        for (let s of students) {
+            const rowClass = s.count === 0 ? 'zero-count' : '';
+            html += `<tr class="${rowClass}">
+                <td class="name-col">${s.displayName}</td>
+                <td class="count-col">${s.count}</td>
+            </tr>`;
+        }
+        tableBody.innerHTML = html;
+    }
+
+    // ---------- 核心点名逻辑 (基于原始counts，与之前相同) ----------
+    function pickStudents(k) {
+        if (k > students.length) k = students.length;
+        if (k <= 0) return [];
+
+        let remainingIndices = students.map((_, idx) => idx);
+        const selectedIndices = [];
+        const counts = students.map(s => s.count);
+
+        for (let pick = 0; pick < k; pick++) {
+            if (remainingIndices.length === 0) break;
+
+            const uIndices = remainingIndices.filter(idx => counts[idx] === 0);
+            const vIndices = remainingIndices.filter(idx => counts[idx] > 0);
+
+            let chosenIdx = null;
+
+            if (uIndices.length > 0 && vIndices.length > 0) {
+                const rand = Math.random();
+                if (rand < 0.9) {  // 90% 从未点过中随机
+                    const randomIndexInU = Math.floor(Math.random() * uIndices.length);
+                    chosenIdx = uIndices[randomIndexInU];
+                } else {            // 10% 从已点过中按倒数权重
+                    chosenIdx = pickWeightedFromV(vIndices, counts);
+                }
+            } else if (uIndices.length > 0) {
+                const randomIndexInU = Math.floor(Math.random() * uIndices.length);
+                chosenIdx = uIndices[randomIndexInU];
+            } else {
+                chosenIdx = pickWeightedFromV(vIndices, counts);
+            }
+
+            if (chosenIdx === null) break;
+            selectedIndices.push(chosenIdx);
+            remainingIndices = remainingIndices.filter(idx => idx !== chosenIdx);
+        }
+        return selectedIndices;
+    }
+
+    function pickWeightedFromV(vIndices, counts) {
+        if (vIndices.length === 0) return null;
+        const weights = vIndices.map(idx => 1 / (counts[idx] + 1));
+        const totalWeight = weights.reduce((a, b) => a + b, 0);
+        let rand = Math.random() * totalWeight;
+        let cum = 0;
+        for (let i = 0; i < vIndices.length; i++) {
+            cum += weights[i];
+            if (rand < cum) return vIndices[i];
+        }
+        return vIndices[vIndices.length - 1];
+    }
+
+    // ---------- 执行点名 (无语音) ----------
+    function performPick() {
+        if (isPicking) return;
+        isPicking = true;
+        pickBtn.disabled = true;
+        resetBtn.disabled = true;
+        toggleTableBtn.disabled = true;
+
+        const num = currentPickCount;
+        const selectedIndices = pickStudents(num);
+        if (selectedIndices.length > 0) {
+            selectedIndices.forEach(idx => students[idx].count += 1);
+            saveToStorage();
+            renderTable();
+
+            // 结果显示使用 displayName
+            const pickedNames = selectedIndices.map(idx => students[idx].displayName);
+            resultContainer.innerHTML = pickedNames.map(name => `<span class="name-badge">${name}</span>`).join('');
+        }
+
+        isPicking = false;
+        pickBtn.disabled = false;
+        resetBtn.disabled = false;
+        toggleTableBtn.disabled = false;
+    }
+
+    // ---------- 重置 ----------
+    function resetAllCounts() {
+        if (isPicking) return;
+        isPicking = true;
+        pickBtn.disabled = true;
+        resetBtn.disabled = true;
+        toggleTableBtn.disabled = true;
+
+        students.forEach(s => s.count = 0);
+        saveToStorage();
+        renderTable();
+        resultContainer.innerHTML = '';
+
+        isPicking = false;
+        pickBtn.disabled = false;
+        resetBtn.disabled = false;
+        toggleTableBtn.disabled = false;
+    }
+
+    // ---------- 切换表格显示 ----------
+    function toggleTable() {
+        tableWrapper.classList.toggle('hidden');
+        const isHidden = tableWrapper.classList.contains('hidden');
+        toggleTableBtn.innerText = isHidden ? '📋 显示名单' : '📋 隐藏名单';
+    }
+
+    // ---------- 滑块初始化 ----------
+    function initSlider() {
+        pickSlider.max = 10;
+        pickSlider.value = currentPickCount;
+        sliderDisplay.innerText = currentPickCount;
+
+        pickSlider.addEventListener('input', function(e) {
+            const val = parseInt(e.target.value, 10);
+            sliderDisplay.innerText = val;
+            currentPickCount = val;
+        });
+    }
+
+    // ---------- 事件绑定 ----------
+    function initEventListeners() {
+        pickBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            performPick();
+        });
+
+        resetBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('确定重置所有同学的被点次数？')) {
+                resetAllCounts();
+            }
+        });
+
+        toggleTableBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleTable();
+        });
+    }
+
+    // ---------- 启动 ----------
+    function init() {
+        loadFromStorage();
+        renderTable();
+        initSlider();
+        initEventListeners();
+        resultContainer.innerHTML = '';
+        // 确保表格初始隐藏 (已有hidden类)
+    }
+
+    init();
+})();
+</script>
+</body>
+</html>
