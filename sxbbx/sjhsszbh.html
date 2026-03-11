@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📐 正弦曲线 · 分数显示φ · 步长π/12</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #eef2f7, #d9e2ef);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-radius: 40px;
+            padding: 30px 32px;
+            box-shadow: 0 25px 45px -10px rgba(0, 30, 60, 0.4);
+            border: 1px solid rgba(255,255,255,0.6);
+            max-width: 1100px;
+            width: fit-content;
+        }
+        h2 {
+            margin: 0 0 6px 0;
+            font-weight: 500;
+            color: #0e2b44;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.8rem;
+        }
+        h2 span {
+            background: #203f61;
+            color: white;
+            padding: 5px 22px;
+            border-radius: 60px;
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+        .formula-panel {
+            background: #e4ecf7;
+            border-radius: 60px;
+            padding: 12px 28px;
+            margin: 10px 0 20px 0;
+            display: inline-block;
+            font-size: 1.7rem;
+            font-weight: 450;
+            color: #12344a;
+            box-shadow: inset 0 2px 5px #b6c9de;
+        }
+        .formula-panel strong {
+            color: #be3c2b;
+            font-weight: 650;
+        }
+        .canvas-container {
+            background: #ffffff;
+            border-radius: 32px;
+            padding: 18px 18px 12px 18px;
+            box-shadow: 0 12px 28px rgba(0, 25, 45, 0.25);
+        }
+        canvas {
+            display: block;
+            width: 800px;
+            height: 400px;
+            border-radius: 20px;
+            background: #fbfdff;
+            box-shadow: inset 0 1px 5px #cfdbe9;
+        }
+        .slider-grid {
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px 35px;
+            justify-content: center;
+        }
+        .slider-block {
+            flex: 1 1 240px;
+            background: #eaf0f9;
+            border-radius: 40px;
+            padding: 20px 28px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 10px 20px rgba(30, 50, 70, 0.15);
+            border: 1px solid #ffffff;
+        }
+        .slider-block label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.4rem;
+            font-weight: 520;
+            color: #13324b;
+            margin-bottom: 15px;
+        }
+        .slider-block label .badge {
+            background: #28557c;
+            color: white;
+            border-radius: 40px;
+            padding: 6px 22px;
+            font-size: 0.95rem;
+            font-family: 'Courier New', monospace;
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .slider-row input[type=range] {
+            flex: 3 1 200px;
+            height: 8px;
+            border-radius: 30px;
+            background: linear-gradient(90deg, #a0bbd8, #254b70);
+            -webkit-appearance: none;
+        }
+        .slider-row input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 26px;
+            height: 26px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px #122e44;
+            border: 2px solid #193f5c;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .slider-row input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #eef6ff;
+        }
+        .slider-row input[type=number] {
+            flex: 1 1 100px;
+            padding: 10px 12px;
+            border-radius: 40px;
+            border: 2px solid #b6c9e0;
+            background: white;
+            font-size: 1.1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            color: #122e44;
+            text-align: center;
+            box-shadow: inset 0 2px 5px #d0ddee;
+        }
+        .slider-row input[type=number]:focus {
+            outline: none;
+            border-color: #2f6396;
+        }
+        .value-indicator {
+            display: none;
+        }
+        .phi-pi {
+            background: #cedcec;
+            border-radius: 40px;
+            padding: 5px 20px;
+            margin-top: 15px;
+            font-size: 0.95rem;
+            color: #132c42;
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .reset-btn {
+            background: #264e73;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            padding: 14px 36px;
+            border-radius: 50px;
+            font-weight: 500;
+            letter-spacing: 0.6px;
+            cursor: pointer;
+            box-shadow: 0 12px 22px #1b3852;
+            transition: all 0.2s;
+            border: 1px solid #89b3db;
+            margin-top: 22px;
+            display: inline-block;
+        }
+        .reset-btn:hover {
+            background: #1b3e60;
+            transform: scale(1.02);
+            box-shadow: 0 16px 28px #112c40;
+        }
+        .footnote {
+            text-align: center;
+            color: #2c4a6e;
+            margin-top: 22px;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+        .reference-note {
+            text-align: left;
+            margin-top: 8px;
+            margin-left: 10px;
+            font-size: 0.9rem;
+            color: #4a637f;
+            background: #eaf0fa;
+            display: inline-block;
+            padding: 5px 18px;
+            border-radius: 30px;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>
+       <span>f(x)=A·sin(ωx+φ)</span>
+    </h2>
+
+    <div class="formula-panel">
+        <strong id="A_display">1.00</strong> · sin( <strong id="w_display">1.00</strong> · x  +  <strong id="p_display">0.00</strong> )
+        <span style="font-size:1.1rem; margin-left:15px; color:#2a4f73;" id="phi_pi_show">(0.00π)</span>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="sineCanvas" width="800" height="400"></canvas>
+    </div>
+    <div class="reference-note">
+        ⚫ 灰色虚线：y = sin(x)  (固定参考)
+    </div>
+
+    <div class="slider-grid">
+        <!-- 振幅 A 滑块 + 输入框 -->
+        <div class="slider-block">
+            <label>📊 振幅 A <span class="badge">0.1 – 5.0</span></label>
+            <div class="slider-row">
+                <input type="range" id="ampSlider" min="0.01" max="5.0" value="1.0" step="0.01">
+                <input type="number" id="ampInput" min="0.01" max="5.0" value="1.0" step="0.01">
+            </div>
+        </div>
+
+        <!-- 角频率 ω 滑块 + 输入框 -->
+        <div class="slider-block">
+            <label>⚙️ 角频率 ω <span class="badge">0.1 – 4.0</span></label>
+            <div class="slider-row">
+                <input type="range" id="omegaSlider" min="0.01" max="4.0" value="1.0" step="0.01">
+                <input type="number" id="omegaInput" min="0.01" max="4.0" value="1.0" step="0.01">
+            </div>
+        </div>
+
+        <!-- 初相 φ 滑块 + 输入框 (范围 -2π ～ 2π) 步长 π/12 -->
+        <div class="slider-block">
+            <label>🌀 初相 φ <span class="badge">-2π ～ 2π</span></label>
+            <div class="slider-row">
+                <input type="range" id="phaseSlider" min="-6.283185307179586" max="6.283185307179586" value="0.0" step="0.2617993877991494">
+                <input type="number" id="phaseInput" min="-6.283185307179586" max="6.283185307179586" value="0.0" step="0.2617993877991494">
+            </div>
+            <div class="phi-pi" id="phiPiHint">φ = 0</div>   <!-- 分数显示将在这里 -->
+        </div>
+    </div>
+
+    <div style="text-align: center;">
+        <button class="reset-btn" id="resetBtn">⟲ 重置 (A=1, ω=1, φ=0)</button>
+    </div>
+    <div class="footnote">
+        👆 拖动滑块 或 直接输入数值 — φ步长π/12，下方显示最简分数
+    </div>
+</div>
+
+<script>
+(function() {
+    // ----- 画布与坐标系设置 -----
+    const canvas = document.getElementById('sineCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const X_MIN = -2 * Math.PI;
+    const X_MAX = 2 * Math.PI;
+    const Y_MIN = -6.0;
+    const Y_MAX = 6.0;
+
+    const MARGIN = { top: 28, bottom: 38, left: 58, right: 28 };
+    const plotWidth = canvas.width - MARGIN.left - MARGIN.right;
+    const plotHeight = canvas.height - MARGIN.top - MARGIN.bottom;
+
+    function toCanvasX(x) {
+        return MARGIN.left + (x - X_MIN) * plotWidth / (X_MAX - X_MIN);
+    }
+    function toCanvasY(y) {
+        return MARGIN.top + (Y_MAX - y) * plotHeight / (Y_MAX - Y_MIN);
+    }
+
+    // ----- DOM 元素：滑块 + 输入框 + 显示 -----
+    const ampSlider = document.getElementById('ampSlider');
+    const ampInput = document.getElementById('ampInput');
+    const omegaSlider = document.getElementById('omegaSlider');
+    const omegaInput = document.getElementById('omegaInput');
+    const phaseSlider = document.getElementById('phaseSlider');
+    const phaseInput = document.getElementById('phaseInput');
+
+    const A_display = document.getElementById('A_display');
+    const w_display = document.getElementById('w_display');
+    const p_display = document.getElementById('p_display');
+    const phi_pi_show = document.getElementById('phi_pi_show');
+    const phiPiHint = document.getElementById('phiPiHint');
+
+    // ----- 工具函数：最大公约数 -----
+    function gcd(a, b) {
+        a = Math.abs(a);
+        b = Math.abs(b);
+        while (b !== 0) {
+            let t = b;
+            b = a % b;
+            a = t;
+        }
+        return a;
+    }
+
+    // ----- 将 φ 值格式化为最简分数 (分母限定为12的因数，但用四舍五入到分母12，再约分) -----
+    function formatPhiFraction(phi) {
+        const pi = Math.PI;
+        if (Math.abs(phi) < 1e-10) return "0";  // 零值
+
+        // 计算与π的比值，四舍五入到最接近的 1/12
+        let r = phi / pi;
+        let denominator = 12;
+        let numerator = Math.round(r * denominator);
+
+        // 处理可能的 -0 情况
+        if (numerator === 0) return "0";
+
+        // 约分
+        let commonDivisor = gcd(numerator, denominator);
+        let num = numerator / commonDivisor;
+        let den = denominator / commonDivisor;
+
+        // 构造分数表达式
+        let sign = (num < 0) ? "-" : "";
+        let absNum = Math.abs(num);
+        let absDen = den;
+
+        if (absDen === 1) {
+            return `φ = ${sign}π` + (absNum === 1 ? "" : `?`); // 实际上如果den=1，num就是整数倍，如 -2π
+        }
+        // 一般情况：分子/分母 π
+        return `φ = ${sign}${absNum}π/${absDen}`;
+    }
+
+    // 辅助函数：更新滑块/输入框同步
+    function updateValuesFromSlider(slider, input) {
+        let val = parseFloat(slider.value);
+        input.value = val.toFixed(2);
+        return val;
+    }
+    function updateValuesFromInput(input, slider) {
+        let val = parseFloat(input.value);
+        if (isNaN(val)) return null;
+        val = Math.min(parseFloat(input.max), Math.max(parseFloat(input.min), val));
+        input.value = val.toFixed(2);
+        slider.value = val;
+        return val;
+    }
+
+    // 更新公式标签与分数显示
+    function updateFormulaLabels(A, omega, phi) {
+        A_display.textContent = A.toFixed(2);
+        w_display.textContent = omega.toFixed(2);
+        p_display.textContent = phi.toFixed(2);
+        let phiPi = phi / Math.PI;
+        phi_pi_show.textContent = ` (${phiPi > 0 ? '+' : ''}${phiPi.toFixed(2)}π)`;
+
+        // 更新分数显示
+        phiPiHint.textContent = formatPhiFraction(phi);
+    }
+
+    // 获取当前参数
+    function getCurrentParams() {
+        return {
+            A: parseFloat(ampSlider.value),
+            omega: parseFloat(omegaSlider.value),
+            phi: parseFloat(phaseSlider.value)
+        };
+    }
+
+    // ----- 绘制背景网格、坐标轴 -----
+    function drawGridAndAxes() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = '#d4e0ed';
+        ctx.fillStyle = '#244b6b';
+        ctx.font = '12px "JetBrains Mono", "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // 水平网格线
+        for (let y = -5; y <= 5; y += 1) {
+            if (Math.abs(y) < 0.01) continue;
+            let canvasY = toCanvasY(y);
+            if (canvasY < MARGIN.top || canvasY > canvas.height - MARGIN.bottom) continue;
+            ctx.beginPath();
+            ctx.strokeStyle = '#dee9f2';
+            ctx.lineWidth = 0.7;
+            ctx.moveTo(MARGIN.left, canvasY);
+            ctx.lineTo(canvas.width - MARGIN.right, canvasY);
+            ctx.stroke();
+        }
+
+        // 垂直网格线
+        for (let x = X_MIN; x <= X_MAX + 0.001; x += Math.PI / 2) {
+            let canvasX = toCanvasX(x);
+            if (canvasX < MARGIN.left || canvasX > canvas.width - MARGIN.right) continue;
+            ctx.beginPath();
+            ctx.strokeStyle = '#dee9f2';
+            ctx.lineWidth = 0.7;
+            ctx.moveTo(canvasX, MARGIN.top);
+            ctx.lineTo(canvasX, canvas.height - MARGIN.bottom);
+            ctx.stroke();
+        }
+
+        // 坐标轴
+        ctx.beginPath();
+        ctx.strokeStyle = '#274e70';
+        ctx.lineWidth = 2.4;
+        let yZero = toCanvasY(0);
+        ctx.moveTo(MARGIN.left, yZero);
+        ctx.lineTo(canvas.width - MARGIN.right, yZero);
+        let xZero = toCanvasX(0);
+        ctx.moveTo(xZero, MARGIN.top);
+        ctx.lineTo(xZero, canvas.height - MARGIN.bottom);
+        ctx.stroke();
+
+        // 箭头
+        ctx.fillStyle = '#1f4570';
+        ctx.beginPath();
+        ctx.moveTo(canvas.width - MARGIN.right - 8, yZero - 5);
+        ctx.lineTo(canvas.width - MARGIN.right, yZero);
+        ctx.lineTo(canvas.width - MARGIN.right - 8, yZero + 5);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(xZero - 5, MARGIN.top + 8);
+        ctx.lineTo(xZero, MARGIN.top);
+        ctx.lineTo(xZero + 5, MARGIN.top + 8);
+        ctx.fill();
+
+        // 刻度标签
+        ctx.fillStyle = '#1d3a57';
+        ctx.font = '13px "Segoe UI", "Courier New", monospace';
+        ctx.textBaseline = 'top';
+        let xTicks = [
+            { val: -2*Math.PI, lbl: '-2π' }, { val: -1.5*Math.PI, lbl: '-3π/2' },
+            { val: -Math.PI, lbl: '-π' }, { val: -Math.PI/2, lbl: '-π/2' },
+            { val: 0, lbl: '0' }, { val: Math.PI/2, lbl: 'π/2' },
+            { val: Math.PI, lbl: 'π' }, { val: 1.5*Math.PI, lbl: '3π/2' },
+            { val: 2*Math.PI, lbl: '2π' }
+        ];
+        xTicks.forEach(t => {
+            let cx = toCanvasX(t.val);
+            if (cx >= MARGIN.left-5 && cx <= canvas.width-MARGIN.right+5) {
+                ctx.fillText(t.lbl, cx, yZero + 8);
+                ctx.beginPath();
+                ctx.arc(cx, yZero, 3, 0, 2*Math.PI);
+                ctx.fillStyle = '#1d3a57';
+                ctx.fill();
+            }
+        });
+
+        // y轴刻度
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        for (let y = -5; y <= 5; y++) {
+            if (Math.abs(y) < 0.01) continue;
+            let cy = toCanvasY(y);
+            if (cy < MARGIN.top-5 || cy > canvas.height-MARGIN.bottom+5) continue;
+            ctx.fillStyle = '#1d3a57';
+            ctx.fillText(y.toString(), xZero - 10, cy);
+            ctx.beginPath();
+            ctx.arc(xZero, cy, 2.5, 0, 2*Math.PI);
+            ctx.fillStyle = '#1d3a57';
+            ctx.fill();
+        }
+        ctx.fillStyle = '#1d3a57';
+        ctx.fillText('0', xZero - 20, yZero - 12);
+        ctx.restore();
+    }
+
+    // ----- 绘制参考曲线 y = sin(x) -----
+    function drawReferenceCurve() {
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = '#9aaec9';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 5]);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        let step = 0.02;
+        let first = true;
+        for (let x = X_MIN; x <= X_MAX; x += step) {
+            let y = Math.sin(x);
+            let canvasX = toCanvasX(x);
+            let canvasY = toCanvasY(y);
+            if (first) {
+                ctx.moveTo(canvasX, canvasY);
+                first = false;
+            } else {
+                ctx.lineTo(canvasX, canvasY);
+            }
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // ----- 绘制主曲线 (红色实线，无标记点) -----
+    function drawCurve(A, omega, phi) {
+        if (A < 0.001) A = 0.001;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = '#D6341F';
+        ctx.lineWidth = 4.2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.setLineDash([]);
+
+        let step = 0.02;
+        let first = true;
+
+        for (let x = X_MIN; x <= X_MAX; x += step) {
+            let y = A * Math.sin(omega * x + phi);
+            let canvasX = toCanvasX(x);
+            let canvasY = toCanvasY(y);
+            if (first) {
+                ctx.moveTo(canvasX, canvasY);
+                first = false;
+            } else {
+                ctx.lineTo(canvasX, canvasY);
+            }
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // ----- 主绘制入口 -----
+    function redraw() {
+        let A = parseFloat(ampSlider.value);
+        let omega = parseFloat(omegaSlider.value);
+        let phi = parseFloat(phaseSlider.value);
+
+        ampInput.value = A.toFixed(2);
+        omegaInput.value = omega.toFixed(2);
+        phaseInput.value = phi.toFixed(2);
+
+        updateFormulaLabels(A, omega, phi);
+
+        drawGridAndAxes();
+        drawReferenceCurve();
+        drawCurve(A, omega, phi);
+    }
+
+    // ----- 事件绑定：滑块 -----
+    ampSlider.addEventListener('input', redraw);
+    omegaSlider.addEventListener('input', redraw);
+    phaseSlider.addEventListener('input', redraw);
+
+    // ----- 事件绑定：输入框 -----
+    function handleInput(input, slider) {
+        let val = parseFloat(input.value);
+        if (isNaN(val)) return;
+        let min = parseFloat(input.min);
+        let max = parseFloat(input.max);
+        val = Math.min(max, Math.max(min, val));
+        input.value = val.toFixed(2);
+        slider.value = val;
+        redraw();
+    }
+
+    ampInput.addEventListener('input', function() { handleInput(ampInput, ampSlider); });
+    omegaInput.addEventListener('input', function() { handleInput(omegaInput, omegaSlider); });
+    phaseInput.addEventListener('input', function() { handleInput(phaseInput, phaseSlider); });
+
+    // 失去焦点时再次确保合法性
+    [ampInput, omegaInput, phaseInput].forEach(inp => {
+        inp.addEventListener('blur', function() {
+            let val = parseFloat(this.value);
+            if (isNaN(val)) {
+                if (this.id === 'ampInput') this.value = ampSlider.value;
+                else if (this.id === 'omegaInput') this.value = omegaSlider.value;
+                else if (this.id === 'phaseInput') this.value = phaseSlider.value;
+            } else {
+                let min = parseFloat(this.min);
+                let max = parseFloat(this.max);
+                val = Math.min(max, Math.max(min, val));
+                this.value = val.toFixed(2);
+                if (this.id === 'ampInput') ampSlider.value = val;
+                else if (this.id === 'omegaInput') omegaSlider.value = val;
+                else if (this.id === 'phaseInput') phaseSlider.value = val;
+            }
+            redraw();
+        });
+    });
+
+    // 重置按钮
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        ampSlider.value = '1.0';
+        omegaSlider.value = '1.0';
+        phaseSlider.value = '0.0';
+        redraw();
+    });
+
+    // 确保步长是π/12 (已经在HTML中设置，但为了精确再执行一次)
+    phaseSlider.step = Math.PI/12;
+    phaseInput.step = Math.PI/12;
+
+    // 初始化绘制
+    redraw();
+    setTimeout(redraw, 80);
+})();
+</script>
+</body>
+</html>
