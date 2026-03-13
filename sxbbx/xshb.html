@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>🎨 像素画板 · 自由缩放</title>
+    <style>
+        /* 样式与之前完全相同，此处省略节省篇幅，实际使用时保留原样式 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(145deg, #e8eef4 0%, #dce5f0 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            margin: 0;
+            touch-action: pan-y;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 40px;
+            box-shadow: 0 25px 45px rgba(0, 15, 30, 0.15), 0 10px 20px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 700px;
+            padding: 28px 22px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #1f3a4b;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            border-left: 8px solid #ff9f4b;
+            padding-left: 20px;
+            letter-spacing: -0.5px;
+        }
+
+        h2 span {
+            background: #ffb26e;
+            font-size: 2rem;
+            border-radius: 60px;
+            padding: 0 10px;
+        }
+
+        .canvas-container {
+            background: #ffffffcc;
+            border-radius: 32px;
+            padding: 18px;
+            margin-bottom: 24px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.04), 0 8px 18px rgba(0,20,30,0.1);
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            max-height: 70vh;
+        }
+
+        .pixel-grid {
+            display: grid;
+            background: #a0b8d0;
+            border: 2px solid #8aa0b8;
+            border-radius: 12px;
+            overflow: hidden;
+            width: fit-content;
+            touch-action: none;
+        }
+
+        .pixel {
+            background-color: #ffffff;
+            aspect-ratio: 1 / 1;
+            cursor: pointer;
+            border: 1px solid rgba(160, 184, 208, 0.6);
+            box-sizing: border-box;
+            transition: background 0.05s ease;
+        }
+
+        .control-panel {
+            background: rgba(255,255,255,0.5);
+            backdrop-filter: blur(5px);
+            border-radius: 60px;
+            padding: 18px 22px;
+            margin: 22px 0 18px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .slider-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+            flex: 2 1 300px;
+        }
+
+        .slider-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 40px;
+            padding: 6px 18px;
+            gap: 12px;
+            flex: 1 1 180px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.02);
+        }
+
+        .slider-item label {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #1d4a63;
+            white-space: nowrap;
+        }
+
+        .slider-item input[type=range] {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #d0e0f0;
+            border-radius: 10px;
+        }
+
+        .slider-item input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #5f9ea0;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border: 2px solid white;
+        }
+
+        .slider-item span {
+            min-width: 40px;
+            text-align: center;
+            font-weight: 600;
+            color: #1f5e7a;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            background: white;
+            padding: 14px 24px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 550;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 8px 16px rgba(0, 30, 40, 0.1);
+            cursor: pointer;
+            transition: all 0.12s ease;
+            border: 1px solid rgba(255,255,255,0.8);
+            touch-action: manipulation;
+            min-width: 110px;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+            background: #ff9f4b;
+            color: white;
+            border: none;
+            box-shadow: 0 12px 22px rgba(255, 159, 75, 0.35);
+        }
+
+        .btn-secondary {
+            background: #e2ecf5;
+            color: #1d4a5c;
+        }
+
+        .toolbar {
+            background: rgba(255,255,255,0.5);
+            backdrop-filter: blur(5px);
+            border-radius: 60px;
+            padding: 18px 20px;
+            margin: 22px 0 18px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .color-section {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .color-swatch {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            touch-action: manipulation;
+        }
+
+        .color-swatch:active {
+            transform: scale(0.9);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .color-swatch.selected {
+            border: 4px solid #2b4c5f;
+            box-shadow: 0 0 0 2px white;
+        }
+
+        .custom-color {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 40px;
+            padding: 4px 8px 4px 12px;
+            border: 1px solid #c0d0e0;
+        }
+
+        .custom-color label {
+            font-size: 0.9rem;
+            color: #2b5a6b;
+            margin-right: 6px;
+        }
+
+        .custom-color input[type="color"] {
+            width: 50px;
+            height: 44px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+            border-radius: 30px;
+        }
+
+        .current-color-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0 0;
+            background: #eaf1fa;
+            border-radius: 40px;
+            padding: 10px 22px;
+            border: 1px solid white;
+        }
+
+        .current-color-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 20px;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .current-color-label {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #1d4a63;
+        }
+
+        .note {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #4c7385;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .card { padding: 20px 16px; }
+            h2 { font-size: 1.8rem; }
+            .control-panel { flex-direction: column; align-items: stretch; }
+            .slider-group { flex-direction: column; }
+            .slider-item { width: 100%; }
+            .action-buttons { justify-content: center; }
+            .btn { flex: 1 1 40%; }
+            .color-swatch { width: 38px; height: 38px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>
+            <span>🖌️</span> 像素画板 · 自由缩放
+        </h2>
+
+        <div class="canvas-container" id="canvasContainer">
+            <div class="pixel-grid" id="pixelGrid"></div>
+        </div>
+
+        <div class="control-panel">
+            <div class="slider-group">
+                <div class="slider-item">
+                    <label>网格数量</label>
+                    <input type="range" id="gridSizeSlider" min="8" max="64" value="16" step="1">
+                    <span id="gridSizeValue">16</span>
+                </div>
+                <div class="slider-item">
+                    <label>格子大小</label>
+                    <input type="range" id="cellSizeSlider" min="16" max="64" value="24" step="2">
+                    <span id="cellSizeValue">24px</span>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-secondary" id="clearBtn">🗑️ 清空</button>
+                <button class="btn btn-primary" id="saveBtn">💾 保存</button>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="color-section">
+                <div class="color-palette" id="colorPalette"></div>
+                <div class="custom-color">
+                    <label for="customPicker">🎨</label>
+                    <input type="color" id="customPicker" value="#4a90e2">
+                </div>
+            </div>
+            <div>
+                <button class="btn btn-secondary" id="eraserBtn">🧽 橡皮</button>
+            </div>
+        </div>
+
+        <div class="current-color-indicator">
+            <div class="current-color-box" id="currentColorBox" style="background-color: #4a90e2;"></div>
+            <span class="current-color-label" id="currentColorLabel">当前颜色</span>
+        </div>
+        <div class="note">手指点击或拖动绘制 · 拖动滑块调整网格和缩放</div>
+    </div>
+
+    <script>
+        (function() {
+            const PRESET_COLORS = [
+                '#000000', '#ffffff', '#ff4d4d', '#ff9f4b', '#ffe74c', 
+                '#8cc084', '#4a90e2', '#9b6b9e', '#ff8c9a', '#a0d6d0',
+                '#c0a080', '#3b5e7a'
+            ];
+
+            const canvasContainer = document.getElementById('canvasContainer');
+            const gridEl = document.getElementById('pixelGrid');
+            const gridSizeSlider = document.getElementById('gridSizeSlider');
+            const gridSizeValue = document.getElementById('gridSizeValue');
+            const cellSizeSlider = document.getElementById('cellSizeSlider');
+            const cellSizeValue = document.getElementById('cellSizeValue');
+            const clearBtn = document.getElementById('clearBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const eraserBtn = document.getElementById('eraserBtn');
+            const colorPaletteEl = document.getElementById('colorPalette');
+            const customPicker = document.getElementById('customPicker');
+            const currentColorBox = document.getElementById('currentColorBox');
+            const currentColorLabel = document.getElementById('currentColorLabel');
+
+            let gridSize = 16;
+            let cellSize = 24;
+            let pixels = [];
+            let currentColor = '#4a90e2';
+            let eraserMode = false;
+            let isDrawing = false;
+
+            function initPixels() {
+                pixels = new Array(gridSize * gridSize).fill('#ffffff');
+            }
+            initPixels();
+
+            function renderGrid() {
+                gridEl.style.gridTemplateColumns = `repeat(${gridSize}, ${cellSize}px)`;
+                gridEl.innerHTML = '';
+                for (let i = 0; i < pixels.length; i++) {
+                    const pixel = document.createElement('div');
+                    pixel.className = 'pixel';
+                    pixel.dataset.index = i;
+                    pixel.style.backgroundColor = pixels[i];
+                    gridEl.appendChild(pixel);
+                }
+            }
+
+            // 关键修复：移除滚动偏移，直接使用相对于 gridEl 左上角的坐标
+            function getPixelIndexFromEvent(e) {
+                const rect = gridEl.getBoundingClientRect();
+                const relativeX = e.clientX - rect.left;
+                const relativeY = e.clientY - rect.top;
+
+                if (relativeX < 0 || relativeY < 0 || relativeX >= gridSize * cellSize || relativeY >= gridSize * cellSize) {
+                    return -1;
+                }
+
+                const col = Math.floor(relativeX / cellSize);
+                const row = Math.floor(relativeY / cellSize);
+                return row * gridSize + col;
+            }
+
+            function setPixelColor(index, color) {
+                if (index >= 0 && index < pixels.length) {
+                    pixels[index] = color;
+                    const pixelEl = gridEl.children[index];
+                    if (pixelEl) pixelEl.style.backgroundColor = color;
+                }
+            }
+
+            function getDrawColor() {
+                return eraserMode ? '#ffffff' : currentColor;
+            }
+
+            function handlePointerDown(e) {
+                e.preventDefault();
+                isDrawing = true;
+                const index = getPixelIndexFromEvent(e);
+                if (index !== -1) {
+                    setPixelColor(index, getDrawColor());
+                }
+                document.addEventListener('pointerup', onDocumentPointerUp);
+                document.addEventListener('pointercancel', onDocumentPointerUp);
+            }
+
+            function handlePointerMove(e) {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const index = getPixelIndexFromEvent(e);
+                if (index !== -1) {
+                    setPixelColor(index, getDrawColor());
+                }
+            }
+
+            function onDocumentPointerUp() {
+                isDrawing = false;
+                document.removeEventListener('pointerup', onDocumentPointerUp);
+                document.removeEventListener('pointercancel', onDocumentPointerUp);
+            }
+
+            function updateGridAndRender() {
+                gridSize = parseInt(gridSizeSlider.value, 10);
+                cellSize = parseInt(cellSizeSlider.value, 10);
+                gridSizeValue.textContent = gridSize;
+                cellSizeValue.textContent = cellSize + 'px';
+                pixels = new Array(gridSize * gridSize).fill('#ffffff');
+                renderGrid();
+            }
+
+            function clearCanvas() {
+                for (let i = 0; i < pixels.length; i++) {
+                    setPixelColor(i, '#ffffff');
+                }
+            }
+
+            function saveAsPNG() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = gridSize * cellSize;
+                canvas.height = gridSize * cellSize;
+
+                for (let row = 0; row < gridSize; row++) {
+                    for (let col = 0; col < gridSize; col++) {
+                        const index = row * gridSize + col;
+                        ctx.fillStyle = pixels[index];
+                        ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                    }
+                }
+                const link = document.createElement('a');
+                link.download = 'pixel-art.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }
+
+            function updateCurrentColorUI(color) {
+                currentColorBox.style.backgroundColor = color;
+                currentColorLabel.textContent = eraserMode ? '橡皮擦模式' : '当前颜色';
+            }
+
+            function toggleEraser() {
+                eraserMode = !eraserMode;
+                if (eraserMode) {
+                    eraserBtn.style.background = '#ffb89a';
+                    eraserBtn.style.color = '#000';
+                    currentColorLabel.textContent = '橡皮擦模式';
+                } else {
+                    eraserBtn.style.background = '';
+                    eraserBtn.style.color = '';
+                    currentColorBox.style.backgroundColor = currentColor;
+                    currentColorLabel.textContent = '当前颜色';
+                }
+            }
+
+            function initPalette() {
+                PRESET_COLORS.forEach(color => {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'color-swatch';
+                    swatch.style.backgroundColor = color;
+                    swatch.dataset.color = color;
+                    swatch.addEventListener('click', (e) => {
+                        document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('selected'));
+                        swatch.classList.add('selected');
+                        currentColor = color;
+                        eraserMode = false;
+                        updateCurrentColorUI(currentColor);
+                        customPicker.value = color;
+                        eraserBtn.style.background = '';
+                        eraserBtn.style.color = '';
+                    });
+                    colorPaletteEl.appendChild(swatch);
+                });
+                if (colorPaletteEl.firstChild) {
+                    colorPaletteEl.firstChild.classList.add('selected');
+                }
+            }
+
+            gridEl.addEventListener('pointerdown', handlePointerDown);
+            gridEl.addEventListener('pointermove', handlePointerMove);
+            canvasContainer.addEventListener('touchstart', (e) => { if (e.target === gridEl) e.preventDefault(); }, { passive: false });
+            canvasContainer.addEventListener('touchmove', (e) => { if (e.target === gridEl) e.preventDefault(); }, { passive: false });
+
+            gridSizeSlider.addEventListener('input', updateGridAndRender);
+            cellSizeSlider.addEventListener('input', updateGridAndRender);
+            clearBtn.addEventListener('click', clearCanvas);
+            saveBtn.addEventListener('click', saveAsPNG);
+            eraserBtn.addEventListener('click', toggleEraser);
+
+            customPicker.addEventListener('input', (e) => {
+                const color = e.target.value;
+                currentColor = color;
+                eraserMode = false;
+                updateCurrentColorUI(color);
+                document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('selected'));
+                eraserBtn.style.background = '';
+                eraserBtn.style.color = '';
+            });
+
+            initPalette();
+            updateGridAndRender();
+            updateCurrentColorUI(currentColor);
+        })();
+    </script>
+</body>
+</html>

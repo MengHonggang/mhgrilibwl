@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>📈 函数图像绘制器 (可调Y轴)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.7.0/math.min.js"></script>
+    <style>
+        /* 样式与之前完全相同，只新增了按钮组的边距 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(145deg, #e8eef4 0%, #dce5f0 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            margin: 0;
+            touch-action: pan-y;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 40px;
+            box-shadow: 0 25px 45px rgba(0, 15, 30, 0.15), 0 10px 20px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 600px;
+            padding: 28px 22px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #1f3a4b;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            border-left: 8px solid #3a9bdc;
+            padding-left: 20px;
+            letter-spacing: -0.5px;
+        }
+
+        h2 span {
+            background: #5ab0e6;
+            font-size: 2rem;
+            border-radius: 60px;
+            padding: 0 10px;
+        }
+
+        .input-section {
+            background: white;
+            border-radius: 28px;
+            padding: 20px 18px;
+            margin-bottom: 24px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 8px 16px rgba(0, 20, 40, 0.08);
+        }
+
+        .function-input {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .expr-box {
+            display: flex;
+            align-items: center;
+            background: #f9fcff;
+            border: 2px solid #dbe4ee;
+            border-radius: 50px;
+            padding: 4px 20px;
+        }
+
+        .expr-box span {
+            font-size: 1.4rem;
+            color: #3a6e8f;
+            margin-right: 10px;
+        }
+
+        #functionExpr {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 1.3rem;
+            padding: 16px 0;
+            outline: none;
+            font-family: 'Courier New', monospace;
+        }
+
+        .button-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .func-btn {
+            background: #e2ecf5;
+            border: none;
+            border-radius: 40px;
+            padding: 14px 24px;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #1d4a5c;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.1s ease;
+            touch-action: manipulation;
+            flex: 1 0 auto;
+            min-width: 80px;
+        }
+
+        .func-btn:active {
+            transform: scale(0.96);
+            background: #c9d8e8;
+        }
+
+        .func-btn.special {
+            background: #ffd9b0;
+            color: #a5521a;
+        }
+
+        .range-panel {
+            background: rgba(255,255,255,0.5);
+            backdrop-filter: blur(4px);
+            border-radius: 60px;
+            padding: 18px 22px;
+            margin: 20px 0 22px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .range-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 40px;
+            padding: 4px 16px;
+            gap: 8px;
+            flex: 1 1 160px;
+        }
+
+        .range-item label {
+            font-size: 1.1rem;
+            color: #2b5a6b;
+        }
+
+        .range-item input {
+            width: 80px;
+            padding: 12px 0 12px 8px;
+            border: none;
+            background: transparent;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #1e4e63;
+            outline: none;
+            text-align: center;
+            border-radius: 30px;
+        }
+
+        .range-item input[type="number"]::-webkit-inner-spin-button {
+            opacity: 0.5;
+        }
+
+        .draw-btn {
+            background: #3a9bdc;
+            color: white;
+            font-size: 1.4rem;
+            padding: 16px 32px;
+            border-radius: 60px;
+            border: none;
+            font-weight: 650;
+            box-shadow: 0 15px 25px rgba(58, 155, 220, 0.35);
+            flex: 1 1 auto;
+            min-width: 160px;
+            cursor: pointer;
+            transition: 0.12s;
+            touch-action: manipulation;
+        }
+
+        .draw-btn:active {
+            background: #2f7fb8;
+            transform: scale(0.96);
+        }
+
+        .canvas-container {
+            background: #ffffffcc;
+            border-radius: 32px;
+            padding: 18px;
+            margin: 24px 0 20px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.04), 0 8px 18px rgba(0,20,30,0.1);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: white;
+            border-radius: 24px;
+            border: 2px solid #a0b8d0;
+            touch-action: none;
+        }
+
+        /* 新增按钮组样式 */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 10px 0 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            background: white;
+            padding: 14px 24px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 550;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 8px 16px rgba(0, 30, 40, 0.1);
+            cursor: pointer;
+            transition: all 0.12s ease;
+            border: 1px solid rgba(255,255,255,0.8);
+            touch-action: manipulation;
+            min-width: 130px;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn-secondary {
+            background: #e2ecf5;
+            color: #1d4a5c;
+        }
+
+        .error-message {
+            color: #c6362e;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            padding-left: 10px;
+            min-height: 2rem;
+        }
+
+        .note {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #4c7385;
+            margin-top: 16px;
+        }
+
+        @media (max-width: 500px) {
+            .card { padding: 20px 16px; }
+            h2 { font-size: 1.8rem; }
+            .range-panel { flex-direction: column; }
+            .range-item { width: 100%; justify-content: space-between; }
+            .range-item input { width: 100px; }
+            .func-btn { padding: 12px 16px; font-size: 1rem; }
+            .btn { min-width: 120px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>
+            <span>📊</span> 函数绘制器
+        </h2>
+
+        <div class="input-section">
+            <div class="function-input">
+                <div class="expr-box">
+                    <span>f(x) =</span>
+                    <input type="text" id="functionExpr" placeholder="例如: 2^x, sin(x), log(x,2)" value="x^2">
+                </div>
+
+                <div class="button-grid">
+                    <button class="func-btn" data-expr="x^2">x²</button>
+                    <button class="func-btn" data-expr="sqrt(x)">√x</button>
+                    <button class="func-btn" data-expr="sin(x)">sin x</button>
+                    <button class="func-btn" data-expr="cos(x)">cos x</button>
+                    <button class="func-btn" data-expr="2^x">2^x</button>
+                    <button class="func-btn" data-expr="e^x">e^x</button>
+                    <button class="func-btn special" data-expr="log(x)">ln x</button>
+                    <button class="func-btn special" data-expr="log10(x)">lg x</button>
+                    <button class="func-btn special" data-expr="log(x,2)">log₂x</button>
+                    <button class="func-btn" data-expr="1/x">1/x</button>
+                    <button class="func-btn" data-expr="abs(x)">|x|</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 范围设置：X轴和Y轴 -->
+        <div class="range-panel">
+            <div class="range-item">
+                <label>x 从</label>
+                <input type="number" id="xMin" value="-10" step="0.1">
+            </div>
+            <div class="range-item">
+                <label>到</label>
+                <input type="number" id="xMax" value="10" step="0.1">
+            </div>
+            <div class="range-item">
+                <label>y 从</label>
+                <input type="number" id="yMin" value="-10" step="0.1">
+            </div>
+            <div class="range-item">
+                <label>到</label>
+                <input type="number" id="yMax" value="10" step="0.1">
+            </div>
+            <button class="draw-btn" id="drawBtn">📈 绘制</button>
+        </div>
+
+        <!-- 画布 -->
+        <div class="canvas-container">
+            <canvas id="graphCanvas" width="600" height="600"></canvas>
+        </div>
+
+        <!-- 新增：下载与复制按钮组 -->
+        <div class="action-buttons">
+            <button class="btn btn-secondary" id="downloadBtn">📥 下载PNG</button>
+            <button class="btn btn-secondary" id="copyBtn">📋 复制图像</button>
+        </div>
+
+        <!-- 错误提示 -->
+        <div class="error-message" id="errorMsg"></div>
+        <div class="note">支持 ^ 幂, log(x), log(x,base), sqrt, 三角函数 · 点击按钮快速输入</div>
+    </div>
+
+    <script>
+        (function() {
+            const exprInput = document.getElementById('functionExpr');
+            const xMinInput = document.getElementById('xMin');
+            const xMaxInput = document.getElementById('xMax');
+            const yMinInput = document.getElementById('yMin');
+            const yMaxInput = document.getElementById('yMax');
+            const drawBtn = document.getElementById('drawBtn');
+            const canvas = document.getElementById('graphCanvas');
+            const ctx = canvas.getContext('2d');
+            const errorMsg = document.getElementById('errorMsg');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const copyBtn = document.getElementById('copyBtn');
+
+            const W = canvas.width;
+            const H = canvas.height;
+
+            function getYMin() {
+                const val = parseFloat(yMinInput.value);
+                return isNaN(val) ? -10 : val;
+            }
+            function getYMax() {
+                const val = parseFloat(yMaxInput.value);
+                return isNaN(val) ? 10 : val;
+            }
+
+            function toCanvasX(x) {
+                const xMin = parseFloat(xMinInput.value) || -10;
+                const xMax = parseFloat(xMaxInput.value) || 10;
+                return ((x - xMin) / (xMax - xMin)) * W;
+            }
+
+            function toCanvasY(y) {
+                const yMin = getYMin();
+                const yMax = getYMax();
+                return H - ((y - yMin) / (yMax - yMin)) * H;
+            }
+
+            function drawGrid() {
+                ctx.clearRect(0, 0, W, H);
+                ctx.save();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, W, H);
+
+                const xMin = parseFloat(xMinInput.value) || -10;
+                const xMax = parseFloat(xMaxInput.value) || 10;
+                const yMin = getYMin();
+                const yMax = getYMax();
+
+                ctx.strokeStyle = '#d0dae8';
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+
+                const xStep = 1;
+                const startX = Math.ceil(xMin / xStep) * xStep;
+                for (let x = startX; x <= xMax; x += xStep) {
+                    const px = toCanvasX(x);
+                    if (px >= 0 && px <= W) {
+                        ctx.moveTo(px, 0);
+                        ctx.lineTo(px, H);
+                    }
+                }
+
+                const yStep = 1;
+                const startY = Math.ceil(yMin / yStep) * yStep;
+                for (let y = startY; y <= yMax; y += yStep) {
+                    const py = toCanvasY(y);
+                    if (py >= 0 && py <= H) {
+                        ctx.moveTo(0, py);
+                        ctx.lineTo(W, py);
+                    }
+                }
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#333';
+
+                const yZero = toCanvasY(0);
+                if (yZero >= 0 && yZero <= H) {
+                    ctx.moveTo(0, yZero);
+                    ctx.lineTo(W, yZero);
+                }
+
+                const xZero = toCanvasX(0);
+                if (xZero >= 0 && xZero <= W) {
+                    ctx.moveTo(xZero, 0);
+                    ctx.lineTo(xZero, H);
+                }
+                ctx.stroke();
+
+                ctx.fillStyle = '#333';
+                if (yZero >= 0 && yZero <= H) {
+                    ctx.beginPath();
+                    ctx.moveTo(W - 10, yZero - 6);
+                    ctx.lineTo(W, yZero);
+                    ctx.lineTo(W - 10, yZero + 6);
+                    ctx.fill();
+                }
+                if (xZero >= 0 && xZero <= W) {
+                    ctx.beginPath();
+                    ctx.moveTo(xZero - 6, 10);
+                    ctx.lineTo(xZero, 0);
+                    ctx.lineTo(xZero + 6, 10);
+                    ctx.fill();
+                }
+
+                ctx.font = '12px sans-serif';
+                ctx.fillStyle = '#2b4e6b';
+                ctx.fillText('x', W - 20, yZero - 10);
+                ctx.fillText('y', xZero + 10, 20);
+                ctx.restore();
+            }
+
+            function drawFunction(expr) {
+                errorMsg.textContent = '';
+
+                const xMin = parseFloat(xMinInput.value);
+                const xMax = parseFloat(xMaxInput.value);
+                if (isNaN(xMin) || isNaN(xMax) || xMin >= xMax) {
+                    errorMsg.textContent = '❌ X范围无效，请确保最小值 < 最大值';
+                    return;
+                }
+
+                const yMin = getYMin();
+                const yMax = getYMax();
+                if (yMin >= yMax) {
+                    errorMsg.textContent = '❌ Y范围无效，请确保最小值 < 最大值';
+                    return;
+                }
+
+                const points = W;
+                const xValues = [];
+                const yValues = [];
+                let hasValid = false;
+
+                for (let i = 0; i < points; i++) {
+                    const t = i / (points - 1);
+                    const x = xMin + t * (xMax - xMin);
+                    try {
+                        const y = math.evaluate(expr, { x: x });
+                        if (typeof y === 'number' && isFinite(y)) {
+                            xValues.push(x);
+                            yValues.push(y);
+                            hasValid = true;
+                        } else {
+                            xValues.push(null);
+                            yValues.push(null);
+                        }
+                    } catch (e) {
+                        errorMsg.textContent = `❌ 表达式错误: ${e.message}`;
+                        return;
+                    }
+                }
+
+                if (!hasValid) {
+                    errorMsg.textContent = '⚠️ 没有有效点可绘制';
+                }
+
+                drawGrid();
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.strokeStyle = '#ff6b4a';
+                ctx.lineWidth = 3;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+
+                let first = true;
+                for (let i = 0; i < points; i++) {
+                    const x = xValues[i];
+                    const y = yValues[i];
+                    if (x === null || y === null) {
+                        first = true;
+                        continue;
+                    }
+                    const canvasX = toCanvasX(x);
+                    const canvasY = toCanvasY(y);
+                    if (canvasX < 0 || canvasX > W || canvasY < 0 || canvasY > H) {
+                        first = true;
+                        continue;
+                    }
+                    if (first) {
+                        ctx.moveTo(canvasX, canvasY);
+                        first = false;
+                    } else {
+                        ctx.lineTo(canvasX, canvasY);
+                    }
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 绑定函数按钮
+            const funcBtns = document.querySelectorAll('.func-btn');
+            funcBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const expr = btn.dataset.expr;
+                    exprInput.value = expr;
+                    drawFunction(expr);
+                });
+            });
+
+            drawBtn.addEventListener('click', () => {
+                const expr = exprInput.value.trim();
+                if (!expr) {
+                    errorMsg.textContent = '请输入函数表达式';
+                    return;
+                }
+                drawFunction(expr);
+            });
+
+            // 下载PNG
+            downloadBtn.addEventListener('click', () => {
+                const link = document.createElement('a');
+                link.download = 'function-graph.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+
+            // 复制图像到剪贴板
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    await navigator.clipboard.write([
+                        new ClipboardItem({
+                            [blob.type]: blob
+                        })
+                    ]);
+                    alert('✅ 图像已复制到剪贴板！');
+                } catch (err) {
+                    alert('❌ 复制失败，请手动截图保存。');
+                }
+            });
+
+            window.addEventListener('load', () => {
+                drawFunction('x^2');
+            });
+
+            canvas.addEventListener('touchstart', (e) => e.preventDefault());
+            canvas.addEventListener('touchmove', (e) => e.preventDefault());
+        })();
+    </script>
+</body>
+</html>
