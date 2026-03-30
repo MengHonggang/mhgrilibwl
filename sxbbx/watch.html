@@ -31,83 +31,129 @@
             margin: 0 auto;
         }
 
-        /* 卡片容器 */
+        /* 登录界面 */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80vh;
+        }
+        .login-box {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .login-box h2 {
+            margin-bottom: 24px;
+            color: #b88b4a;
+            font-weight: 600;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #6b5a3e;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            border: 1.5px solid #e9e9ef;
+            border-radius: 28px;
+            font-size: 1rem;
+            background: #fefaf5;
+            outline: none;
+        }
+        .input-group input:focus {
+            border-color: #d4af7a;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: #d4af7a;
+            color: white;
+            border: none;
+            border-radius: 48px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .login-btn:hover { background: #c29d60; }
+        .error-msg { color: #e53935; margin-top: 12px; font-size: 0.9rem; }
+
+        /* 日记卡片 */
         .diary-card {
             background: #ffffff;
             border-radius: 32px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.02);
             overflow: hidden;
-            transition: all 0.2s ease;
         }
 
-        /* 头部 */
         .header {
             padding: 24px 20px 16px;
             background: linear-gradient(135deg, #f9f3e6 0%, #fff5ea 100%);
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
-
         .header h1 {
             font-size: 1.8rem;
             font-weight: 600;
-            letter-spacing: -0.3px;
             background: linear-gradient(120deg, #d4af7a, #b88b4a);
             background-clip: text;
             -webkit-background-clip: text;
             color: transparent;
             margin-bottom: 6px;
         }
-
         .sub {
             font-size: 0.85rem;
             color: #a28b5c;
-            margin-top: 4px;
-            font-weight: 400;
         }
-
-        /* 日期选择区 */
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #b88b4a;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-top: 8px;
+            text-decoration: underline;
+        }
         .date-section {
             padding: 16px 20px;
-            background: #ffffff;
             border-bottom: 1px solid #f0f0f0;
         }
-
         .date-label {
             font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
             font-weight: 500;
             color: #b88b4a;
             margin-bottom: 8px;
         }
-
         .date-picker-wrapper {
             display: flex;
-            align-items: center;
             gap: 12px;
             flex-wrap: wrap;
         }
-
         input[type="date"] {
             flex: 1;
             padding: 14px 16px;
             font-size: 1rem;
-            font-family: inherit;
             border: 1.5px solid #e9e9ef;
             border-radius: 28px;
             background: #fefaf5;
-            color: #2c3e2f;
             font-weight: 500;
-            transition: all 0.2s;
             outline: none;
-            -webkit-appearance: none;
         }
-
         input[type="date"]:focus {
             border-color: #d4af7a;
             box-shadow: 0 0 0 3px rgba(212, 175, 122, 0.2);
         }
-
         .today-btn {
             background: #f3ede5;
             border: none;
@@ -117,30 +163,23 @@
             font-weight: 500;
             color: #b88b4a;
             cursor: pointer;
-            transition: all 0.2s;
             white-space: nowrap;
         }
-
         .today-btn:active {
             background: #e6dacb;
             transform: scale(0.96);
         }
-
-        /* 日记正文区 */
         .diary-content {
             padding: 20px;
         }
-
         .editor-label {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
             margin-bottom: 12px;
-            font-size: 0.85rem;
             color: #6b5a3e;
             font-weight: 500;
         }
-
         .word-count {
             font-size: 0.7rem;
             background: #f4f0e8;
@@ -148,83 +187,57 @@
             border-radius: 30px;
             color: #8b7355;
         }
-
         textarea {
             width: 100%;
             min-height: 320px;
             padding: 18px;
             font-size: 1rem;
             line-height: 1.55;
-            font-family: inherit;
-            background-color: #fefcf9;
+            background: #fefcf9;
             border: 1.5px solid #ece4d9;
             border-radius: 24px;
             resize: vertical;
             outline: none;
-            transition: 0.2s;
-            color: #2d2b26;
+            font-family: inherit;
         }
-
         textarea:focus {
             border-color: #d4af7a;
-            box-shadow: 0 4px 12px rgba(212, 175, 122, 0.15);
             background-color: #fffefb;
         }
-
-        /* 按钮组 */
         .action-buttons {
             display: flex;
             gap: 12px;
             margin-top: 24px;
             flex-wrap: wrap;
         }
-
         button {
             flex: 1;
             padding: 14px 0;
             border-radius: 48px;
             font-weight: 600;
             font-size: 1rem;
-            font-family: inherit;
             cursor: pointer;
-            transition: all 0.2s;
             border: none;
             background: none;
         }
-
         .btn-save {
             background: #d4af7a;
             color: white;
             box-shadow: 0 2px 6px rgba(180, 130, 70, 0.2);
         }
-
-        .btn-save:active {
-            background: #c29d60;
-            transform: scale(0.97);
-        }
-
+        .btn-save:active { background: #c29d60; transform: scale(0.97); }
         .btn-clear {
             background: #f2ede6;
             color: #8b7355;
             border: 1px solid #e4dbcf;
         }
-
-        .btn-clear:active {
-            background: #e8dfd4;
-        }
-
+        .btn-clear:active { background: #e8dfd4; }
         .btn-weather {
             background: #e7dfd1;
             color: #b88b4a;
             border: 1px solid #dacfbf;
         }
-
-        .btn-weather:active {
-            background: #ddd1bf;
-            transform: scale(0.97);
-        }
-
-        /* 状态提示 */
+        .btn-weather:active { background: #ddd1bf; transform: scale(0.97); }
         .status-msg {
             text-align: center;
             font-size: 0.8rem;
@@ -233,10 +246,7 @@
             border-radius: 40px;
             background: #f8f4ed;
             color: #b88b4a;
-            transition: 0.2s;
         }
-
-        /* 加载占位 */
         .loading-spinner {
             display: inline-block;
             width: 18px;
@@ -248,10 +258,7 @@
             vertical-align: middle;
             margin-right: 6px;
         }
-
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* 空状态优雅提示 */
         .empty-hint {
             background: #fef7ef;
             border-radius: 24px;
@@ -262,60 +269,47 @@
             margin-top: 12px;
             border: 1px dashed #e9dccc;
         }
-
-        /* 手机极窄优化 */
-        @media (max-width: 480px) {
-            body {
-                padding: 12px 12px 32px;
-            }
-            .header {
-                padding: 20px 16px 12px;
-            }
-            .header h1 {
-                font-size: 1.6rem;
-            }
-            .date-picker-wrapper {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .today-btn {
-                text-align: center;
-            }
-            textarea {
-                min-height: 280px;
-                font-size: 0.95rem;
-            }
-            .action-buttons button {
-                padding: 12px 0;
-            }
-        }
-
-        textarea::-webkit-scrollbar {
-            width: 6px;
-        }
-        textarea::-webkit-scrollbar-track {
-            background: #f0eae2;
-            border-radius: 8px;
-        }
-        textarea::-webkit-scrollbar-thumb {
-            background: #d4af7a;
-            border-radius: 8px;
-        }
-
         footer {
             margin-top: 24px;
             text-align: center;
             font-size: 0.7rem;
             color: #b7aa93;
         }
+        @media (max-width: 480px) {
+            body { padding: 12px; }
+            .header h1 { font-size: 1.6rem; }
+            .date-picker-wrapper { flex-direction: column; align-items: stretch; }
+            textarea { min-height: 280px; }
+        }
     </style>
 </head>
 <body>
     <div id="app">
-        <div class="diary-card">
+        <!-- 登录界面 -->
+        <div v-if="!loggedIn" class="login-container">
+            <div class="login-box">
+                <h2>📔 生活观察日记</h2>
+                <div class="input-group">
+                    <label>邮箱</label>
+                    <input type="email" v-model="loginEmail" @keyup.enter="login" placeholder="你的邮箱">
+                </div>
+                <div class="input-group">
+                    <label>密码</label>
+                    <input type="password" v-model="loginPassword" @keyup.enter="login" placeholder="密码">
+                </div>
+                <button class="login-btn" @click="login" :disabled="loggingIn">
+                    {{ loggingIn ? '登录中...' : '登录' }}
+                </button>
+                <div v-if="loginError" class="error-msg">{{ loginError }}</div>
+            </div>
+        </div>
+
+        <!-- 日记主界面 -->
+        <div v-else class="diary-card">
             <div class="header">
                 <h1>📓 生活观察日记</h1>
                 <div class="sub">记录细微瞬间 · 珍藏日常诗意</div>
+                <button class="logout-btn" @click="logout">🚪 退出登录</button>
             </div>
 
             <div class="date-section">
@@ -377,10 +371,11 @@
             const SUPABASE_URL = 'https://axvrvqivbxxrniaabogy.supabase.co';
             const SUPABASE_KEY = 'sb_publishable_ufXYQAWGDWzCs5Vyb8zW1Q_AvWfxz9e';
             const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            const USER_ID = 'mhg_calendar';
+
+            // 表名
             const TABLE_NAME = 'daily_observations';
 
-            // ---------- 优美句子库 (英文，每天不同) ----------
+            // ---------- 优美句子库 ----------
             const INSPIRATION_QUOTES = [
                 "Look at the stars. See their beauty. And in that beauty, see yourself. — Drea Stahr",
                 "The world is full of magic things, patiently waiting for our senses to grow sharper. — W.B. Yeats",
@@ -414,12 +409,10 @@
                 "It does not matter how slowly you go as long as you do not stop. — Confucius"
             ];
 
-            // 根据当天日期 (YYYY-MM-DD) 获取一个确定性的句子索引 (同一天相同，不同天不同)
-            const getDailyQuote = (todayDateStr) => {
-                // 简单哈希: 将日期字符串转为数字和
+            const getDailyQuote = (dateStr) => {
                 let hash = 0;
-                for (let i = 0; i < todayDateStr.length; i++) {
-                    hash = ((hash << 5) - hash) + todayDateStr.charCodeAt(i);
+                for (let i = 0; i < dateStr.length; i++) {
+                    hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
                     hash |= 0;
                 }
                 const index = Math.abs(hash) % INSPIRATION_QUOTES.length;
@@ -428,6 +421,15 @@
 
             const app = createApp({
                 setup() {
+                    // 登录状态
+                    const loggedIn = ref(false);
+                    const loginEmail = ref('');
+                    const loginPassword = ref('');
+                    const loginError = ref('');
+                    const loggingIn = ref(false);
+                    const currentUserId = ref(null);
+
+                    // 日记状态
                     const selectedDate = ref('');
                     const diaryText = ref('');
                     const loading = ref(false);
@@ -437,6 +439,51 @@
                     let statusTimeout = null;
                     const todayStr = dayjs().format('YYYY-MM-DD');
 
+                    // 辅助
+                    const setStatusMessage = (msg) => {
+                        if (statusTimeout) clearTimeout(statusTimeout);
+                        statusMessage.value = msg;
+                        statusTimeout = setTimeout(() => { statusMessage.value = ''; }, 3000);
+                    };
+
+                    // 登录方法
+                    const login = async () => {
+                        if (!loginEmail.value || !loginPassword.value) {
+                            loginError.value = '请输入邮箱和密码';
+                            return;
+                        }
+                        loggingIn.value = true;
+                        loginError.value = '';
+                        try {
+                            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                                email: loginEmail.value,
+                                password: loginPassword.value
+                            });
+                            if (error) throw error;
+                            const user = data.user;
+                            if (!user) throw new Error('登录失败');
+                            currentUserId.value = user.id;
+                            loggedIn.value = true;
+                            // 登录后加载当天日记
+                            initDate();
+                            loadDiaryByDate();
+                        } catch (err) {
+                            loginError.value = err.message || '登录失败，请检查邮箱和密码';
+                        } finally {
+                            loggingIn.value = false;
+                        }
+                    };
+
+                    // 退出登录
+                    const logout = async () => {
+                        await supabaseClient.auth.signOut();
+                        loggedIn.value = false;
+                        loginEmail.value = '';
+                        loginPassword.value = '';
+                        currentUserId.value = null;
+                    };
+
+                    // 初始化日期为今天
                     const initDate = () => {
                         selectedDate.value = todayStr;
                     };
@@ -445,46 +492,42 @@
                         return diaryText.value ? diaryText.value.trim().length : 0;
                     });
 
-                    const setStatusMessage = (msg, color = '#b88b4a') => {
-                        if (statusTimeout) clearTimeout(statusTimeout);
-                        statusMessage.value = msg;
-                        statusTimeout = setTimeout(() => {
-                            statusMessage.value = '';
-                        }, 3000);
-                    };
-
+                    // 加载日记
                     const loadDiaryByDate = async () => {
-                        if (!selectedDate.value) return;
+                        if (!selectedDate.value || !currentUserId.value) return;
                         loading.value = true;
                         diaryText.value = '';
                         try {
                             const { data, error } = await supabaseClient
                                 .from(TABLE_NAME)
                                 .select('content')
-                                .eq('user_id', USER_ID)
+                                .eq('user_id', currentUserId.value)
                                 .eq('date', selectedDate.value)
                                 .maybeSingle();
 
-                            if (error) throw error;
-                            if (data && data.content) {
+                            if (error) {
+                                if (error.code === '42P01') {
+                                    setStatusMessage('⚠️ 数据库表不存在，请创建 daily_observations 表');
+                                } else {
+                                    throw error;
+                                }
+                            } else if (data && data.content) {
                                 diaryText.value = data.content;
                             } else {
                                 diaryText.value = '';
                             }
                         } catch (err) {
-                            console.error('加载日记失败:', err);
-                            setStatusMessage('加载失败，请检查网络', '#c75c3e');
+                            console.error('加载失败:', err);
+                            setStatusMessage('加载失败：' + err.message);
                         } finally {
                             loading.value = false;
                         }
                     };
 
+                    // 保存日记
                     const saveDiary = async () => {
                         if (saving.value) return;
-                        if (!selectedDate.value) {
-                            setStatusMessage('请先选择日期', '#c75c3e');
-                            return;
-                        }
+                        if (!selectedDate.value || !currentUserId.value) return;
                         saving.value = true;
                         const trimmedContent = diaryText.value ? diaryText.value.trim() : '';
 
@@ -492,7 +535,7 @@
                             const { data: existing, error: fetchError } = await supabaseClient
                                 .from(TABLE_NAME)
                                 .select('id')
-                                .eq('user_id', USER_ID)
+                                .eq('user_id', currentUserId.value)
                                 .eq('date', selectedDate.value)
                                 .maybeSingle();
 
@@ -505,10 +548,10 @@
                                         .delete()
                                         .eq('id', existing.id);
                                     if (delError) throw delError;
-                                    setStatusMessage(`🗑️ 已删除 ${selectedDate.value} 的日记`, '#b88b4a');
+                                    setStatusMessage(`🗑️ 已删除 ${selectedDate.value} 的日记`);
                                     diaryText.value = '';
                                 } else {
-                                    setStatusMessage('日记内容为空，未作更改', '#bc9a6a');
+                                    setStatusMessage('日记为空，未作更改');
                                 }
                                 return;
                             }
@@ -519,23 +562,23 @@
                                     .update({ content: trimmedContent, updated_at: new Date().toISOString() })
                                     .eq('id', existing.id);
                                 if (updateError) throw updateError;
-                                setStatusMessage(`✅ 日记已更新 (${selectedDate.value})`, '#689f38');
+                                setStatusMessage(`✅ 日记已更新 (${selectedDate.value})`);
                             } else {
                                 const { error: insertError } = await supabaseClient
                                     .from(TABLE_NAME)
                                     .insert({
-                                        user_id: USER_ID,
+                                        user_id: currentUserId.value,
                                         date: selectedDate.value,
                                         content: trimmedContent,
                                         created_at: new Date().toISOString(),
                                         updated_at: new Date().toISOString()
                                     });
                                 if (insertError) throw insertError;
-                                setStatusMessage(`✨ 日记已保存 (${selectedDate.value})`, '#689f38');
+                                setStatusMessage(`✨ 日记已保存 (${selectedDate.value})`);
                             }
                         } catch (err) {
                             console.error('保存失败:', err);
-                            setStatusMessage('保存失败，请稍后重试', '#c75c3e');
+                            setStatusMessage('保存失败：' + err.message);
                         } finally {
                             saving.value = false;
                         }
@@ -544,7 +587,7 @@
                     const clearCurrentText = () => {
                         if (diaryText.value.trim() === '') return;
                         diaryText.value = '';
-                        setStatusMessage('已清空当前编辑，保存后生效', '#b88b4a');
+                        setStatusMessage('已清空当前编辑，保存后生效');
                     };
 
                     const jumpToToday = () => {
@@ -555,135 +598,91 @@
 
                     const onTextChange = () => {};
 
-                    // ---------- 天气与灵感插入 ----------
-                    // 获取设备地理位置 (Promise)
+                    // 天气与灵感插入
                     const getCurrentPosition = () => {
                         return new Promise((resolve, reject) => {
-                            if (!navigator.geolocation) {
-                                reject(new Error("浏览器不支持地理位置"));
-                                return;
-                            }
-                            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
+                            if (!navigator.geolocation) reject(new Error("浏览器不支持地理位置"));
+                            else navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
                         });
                     };
-
-                    // 通过经纬度获取城市名称 (反向地理编码，免费 API)
                     const getCityFromCoords = async (lat, lon) => {
                         try {
                             const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=zh`);
                             const data = await res.json();
-                            if (data.city || data.locality) return data.city || data.locality || data.principalSubdivision || "附近区域";
-                            return "您的位置";
-                        } catch (e) {
-                            console.warn("反向地理编码失败", e);
-                            return "附近地区";
-                        }
+                            return data.city || data.locality || data.principalSubdivision || "附近区域";
+                        } catch { return "附近地区"; }
                     };
-
-                    // 通过经纬度获取天气 (open-meteo 免费无需 key)
                     const getWeatherByCoords = async (lat, lon) => {
                         try {
                             const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
                             const res = await fetch(url);
                             const data = await res.json();
                             if (data.current_weather) {
-                                const weatherCode = data.current_weather.weathercode;
-                                // weathercode 映射简单天气描述
-                                const weatherMap = {
-                                    0: "晴 ☀️", 1: "主要晴 🌤️", 2: "部分多云 ⛅", 3: "多云 ☁️",
-                                    45: "雾 🌫️", 48: "雾 🌫️", 51: "小雨 🌧️", 53: "中雨 🌧️", 55: "大雨 🌧️",
-                                    61: "小雨 🌦️", 63: "中雨 🌦️", 65: "大雨 🌧️", 71: "小雪 ❄️", 73: "中雪 ❄️", 75: "大雪 ❄️",
-                                    80: "阵雨 ☔", 81: "强阵雨 ☔", 82: "暴雨 ⛈️", 95: "雷暴 ⛈️", 96: "雷暴伴冰雹 ⛈️"
+                                const wc = data.current_weather.weathercode;
+                                const map = {
+                                    0:"晴 ☀️",1:"主要晴 🌤️",2:"部分多云 ⛅",3:"多云 ☁️",
+                                    45:"雾 🌫️",48:"雾 🌫️",51:"小雨 🌧️",53:"中雨 🌧️",55:"大雨 🌧️",
+                                    61:"小雨 🌦️",63:"中雨 🌦️",65:"大雨 🌧️",71:"小雪 ❄️",73:"中雪 ❄️",75:"大雪 ❄️",
+                                    80:"阵雨 ☔",81:"强阵雨 ☔",82:"暴雨 ⛈️",95:"雷暴 ⛈️",96:"雷暴伴冰雹 ⛈️"
                                 };
-                                const weatherText = weatherMap[weatherCode] || "多云 🌥️";
-                                const temperature = Math.round(data.current_weather.temperature);
-                                return `${weatherText} ${temperature}℃`;
+                                const weather = map[wc] || "多云 🌥️";
+                                const temp = Math.round(data.current_weather.temperature);
+                                return `${weather} ${temp}℃`;
                             }
-                            return "天气信息获取失败";
-                        } catch (e) {
-                            console.warn("天气API失败", e);
-                            return "无法获取天气";
-                        }
+                            return "天气获取失败";
+                        } catch { return "无法获取天气"; }
                     };
 
-                    // 主要插入逻辑
                     const insertWeatherInspiration = async () => {
                         if (weatherLoading.value) return;
                         weatherLoading.value = true;
                         let locationName = "未知地区";
                         let weatherDesc = "🌤️ 天气数据获取失败";
-                        let todayReal = dayjs().format("YYYY年MM月DD日");
-                        let successFlag = false;
-
+                        let success = false;
                         try {
-                            // 1. 获取地理位置
-                            const position = await getCurrentPosition();
-                            const { latitude, longitude } = position.coords;
-                            
-                            // 2. 获取城市名 (反向地理编码)
-                            try {
-                                locationName = await getCityFromCoords(latitude, longitude);
-                            } catch (e) {
-                                locationName = "当前区域";
-                            }
-                            
-                            // 3. 获取天气
-                            try {
-                                weatherDesc = await getWeatherByCoords(latitude, longitude);
-                            } catch (e) {
-                                weatherDesc = "🌡️ 天气获取失败";
-                            }
-                            successFlag = true;
+                            const pos = await getCurrentPosition();
+                            const { latitude, longitude } = pos.coords;
+                            locationName = await getCityFromCoords(latitude, longitude);
+                            weatherDesc = await getWeatherByCoords(latitude, longitude);
+                            success = true;
                         } catch (err) {
-                            console.warn("地理位置获取失败", err);
-                            locationName = "设备位置未授权";
-                            weatherDesc = "位置权限未开启，天气暂缺";
+                            console.warn(err);
+                            locationName = "位置未授权";
+                            weatherDesc = "位置权限未开启";
                         }
-
-                        // 4. 根据今天的实际日期获取一句优美句子（每天不一样）
-                        const todayRealStr = dayjs().format('YYYY-MM-DD');
-                        const dailyQuote = getDailyQuote(todayRealStr);
-                        
-                        // 组装插入的文字块
+                        const todayReal = dayjs().format('YYYY年MM月DD日');
+                        const dailyQuote = getDailyQuote(dayjs().format('YYYY-MM-DD'));
                         const weatherLine = `📍 ${locationName}  ·  ${todayReal}  ·  ${weatherDesc}`;
                         const quoteLine = `✨ 今日灵感：${dailyQuote}`;
-                        const separator = `\n\n`;
-                        const insertionBlock = `${weatherLine}\n${quoteLine}${separator}`;
-
-                        // 将内容追加到当前日记文本框末尾（保留原有内容）
+                        const insertion = `${weatherLine}\n${quoteLine}\n\n`;
                         const current = diaryText.value;
-                        const newText = current ? current + insertionBlock : insertionBlock;
-                        diaryText.value = newText;
-                        
-                        if (successFlag) {
-                            setStatusMessage(`✅ 已插入今日天气与灵感句子`, '#689f38');
-                        } else {
-                            setStatusMessage(`⚠️ 插入完成，但天气/位置信息获取受限，请检查权限`, '#c29d60');
-                        }
-                        
+                        diaryText.value = current ? current + insertion : insertion;
+                        setStatusMessage(success ? '✅ 已插入天气与灵感' : '⚠️ 插入完成但部分信息获取受限');
                         weatherLoading.value = false;
                     };
 
+                    // 自动恢复会话
+                    const checkSession = async () => {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+                        if (session && session.user) {
+                            currentUserId.value = session.user.id;
+                            loggedIn.value = true;
+                            initDate();
+                            loadDiaryByDate();
+                        }
+                    };
+
                     onMounted(() => {
-                        initDate();
-                        loadDiaryByDate();
+                        checkSession();
                     });
 
                     return {
-                        selectedDate,
-                        diaryText,
-                        loading,
-                        saving,
-                        weatherLoading,
-                        statusMessage,
-                        contentLength,
-                        todayStr,
-                        loadDiaryByDate,
-                        saveDiary,
-                        clearCurrentText,
-                        jumpToToday,
-                        onTextChange,
-                        insertWeatherInspiration,
+                        loggedIn, loginEmail, loginPassword, loginError, loggingIn,
+                        login, logout,
+                        selectedDate, diaryText, loading, saving, weatherLoading,
+                        statusMessage, contentLength, todayStr,
+                        loadDiaryByDate, saveDiary, clearCurrentText, jumpToToday,
+                        onTextChange, insertWeatherInspiration
                     };
                 }
             });
