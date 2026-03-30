@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>生活观察日记 · 每日笔记</title>
+    <script src="https://unpkg.com/vue@3.2.47/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #f5f7fb;
+            font-family: system-ui, -apple-system, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            padding: 20px 16px 40px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        #app {
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* 卡片容器 */
+        .diary-card {
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.02);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        /* 头部 */
+        .header {
+            padding: 24px 20px 16px;
+            background: linear-gradient(135deg, #f9f3e6 0%, #fff5ea 100%);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            background: linear-gradient(120deg, #d4af7a, #b88b4a);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .sub {
+            font-size: 0.85rem;
+            color: #a28b5c;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+
+        /* 日期选择区 */
+        .date-section {
+            padding: 16px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .date-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+            color: #b88b4a;
+            margin-bottom: 8px;
+        }
+
+        .date-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        input[type="date"] {
+            flex: 1;
+            padding: 14px 16px;
+            font-size: 1rem;
+            font-family: inherit;
+            border: 1.5px solid #e9e9ef;
+            border-radius: 28px;
+            background: #fefaf5;
+            color: #2c3e2f;
+            font-weight: 500;
+            transition: all 0.2s;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="date"]:focus {
+            border-color: #d4af7a;
+            box-shadow: 0 0 0 3px rgba(212, 175, 122, 0.2);
+        }
+
+        .today-btn {
+            background: #f3ede5;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #b88b4a;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .today-btn:active {
+            background: #e6dacb;
+            transform: scale(0.96);
+        }
+
+        /* 日记正文区 */
+        .diary-content {
+            padding: 20px;
+        }
+
+        .editor-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            color: #6b5a3e;
+            font-weight: 500;
+        }
+
+        .word-count {
+            font-size: 0.7rem;
+            background: #f4f0e8;
+            padding: 4px 10px;
+            border-radius: 30px;
+            color: #8b7355;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 320px;
+            padding: 18px;
+            font-size: 1rem;
+            line-height: 1.55;
+            font-family: inherit;
+            background-color: #fefcf9;
+            border: 1.5px solid #ece4d9;
+            border-radius: 24px;
+            resize: vertical;
+            outline: none;
+            transition: 0.2s;
+            color: #2d2b26;
+        }
+
+        textarea:focus {
+            border-color: #d4af7a;
+            box-shadow: 0 4px 12px rgba(212, 175, 122, 0.15);
+            background-color: #fffefb;
+        }
+
+        /* 按钮组 */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 0;
+            border-radius: 48px;
+            font-weight: 600;
+            font-size: 1rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: none;
+        }
+
+        .btn-save {
+            background: #d4af7a;
+            color: white;
+            box-shadow: 0 2px 6px rgba(180, 130, 70, 0.2);
+        }
+
+        .btn-save:active {
+            background: #c29d60;
+            transform: scale(0.97);
+        }
+
+        .btn-clear {
+            background: #f2ede6;
+            color: #8b7355;
+            border: 1px solid #e4dbcf;
+        }
+
+        .btn-clear:active {
+            background: #e8dfd4;
+        }
+
+        .btn-weather {
+            background: #e7dfd1;
+            color: #b88b4a;
+            border: 1px solid #dacfbf;
+        }
+
+        .btn-weather:active {
+            background: #ddd1bf;
+            transform: scale(0.97);
+        }
+
+        /* 状态提示 */
+        .status-msg {
+            text-align: center;
+            font-size: 0.8rem;
+            margin-top: 20px;
+            padding: 8px;
+            border-radius: 40px;
+            background: #f8f4ed;
+            color: #b88b4a;
+            transition: 0.2s;
+        }
+
+        /* 加载占位 */
+        .loading-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-top-color: #d4af7a;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 空状态优雅提示 */
+        .empty-hint {
+            background: #fef7ef;
+            border-radius: 24px;
+            padding: 24px;
+            text-align: center;
+            color: #bc9a6a;
+            font-size: 0.9rem;
+            margin-top: 12px;
+            border: 1px dashed #e9dccc;
+        }
+
+        /* 手机极窄优化 */
+        @media (max-width: 480px) {
+            body {
+                padding: 12px 12px 32px;
+            }
+            .header {
+                padding: 20px 16px 12px;
+            }
+            .header h1 {
+                font-size: 1.6rem;
+            }
+            .date-picker-wrapper {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .today-btn {
+                text-align: center;
+            }
+            textarea {
+                min-height: 280px;
+                font-size: 0.95rem;
+            }
+            .action-buttons button {
+                padding: 12px 0;
+            }
+        }
+
+        textarea::-webkit-scrollbar {
+            width: 6px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #f0eae2;
+            border-radius: 8px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #d4af7a;
+            border-radius: 8px;
+        }
+
+        footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #b7aa93;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="diary-card">
+            <div class="header">
+                <h1>📓 生活观察日记</h1>
+                <div class="sub">记录细微瞬间 · 珍藏日常诗意</div>
+            </div>
+
+            <div class="date-section">
+                <div class="date-label">📅 选择日期</div>
+                <div class="date-picker-wrapper">
+                    <input type="date" v-model="selectedDate" @change="loadDiaryByDate" :max="todayStr">
+                    <button class="today-btn" @click="jumpToToday">✨ 今天</button>
+                </div>
+            </div>
+
+            <div class="diary-content">
+                <div class="editor-label">
+                    <span>🌿 今日观察笔记</span>
+                    <span class="word-count">{{ contentLength }} 字</span>
+                </div>
+
+                <div v-if="loading" style="text-align:center; padding: 40px;">
+                    <div class="loading-spinner"></div> 读取时光笔记...
+                </div>
+
+                <template v-else>
+                    <textarea 
+                        v-model="diaryText" 
+                        placeholder="写一写今天观察到的细节吧：\n· 清晨窗台上的露珠\n· 咖啡馆里陌生人温暖的笑容\n· 路边梧桐叶的金边\n\n让平凡的日常发光✨"
+                        @input="onTextChange"
+                    ></textarea>
+                </template>
+
+                <div class="action-buttons">
+                    <button class="btn-save" @click="saveDiary" :disabled="saving">
+                        {{ saving ? '保存中...' : '💾 保存日记' }}
+                    </button>
+                    <button class="btn-weather" @click="insertWeatherInspiration" :disabled="weatherLoading">
+                        {{ weatherLoading ? '获取天气中...' : '🌤️ 插入天气与灵感' }}
+                    </button>
+                    <button class="btn-clear" @click="clearCurrentText" :disabled="saving || loading">
+                        🧹 清空
+                    </button>
+                </div>
+
+                <div v-if="statusMessage" class="status-msg">
+                    {{ statusMessage }}
+                </div>
+                <div v-if="!loading && !diaryText && !statusMessage" class="empty-hint">
+                    ✨ 今天还没有记录，写点什么吧～
+                </div>
+            </div>
+        </div>
+        <footer>🌙 日记自动保存在云端 · 点击「插入天气与灵感」获取今日天气与每日美句</footer>
+    </div>
+
+    <script>
+        (function(){
+            const { createApp, ref, computed, onMounted } = Vue;
+            const supabase = window.supabase;
+            const dayjs = window.dayjs;
+
+            // Supabase 配置
+            const SUPABASE_URL = 'https://axvrvqivbxxrniaabogy.supabase.co';
+            const SUPABASE_KEY = 'sb_publishable_ufXYQAWGDWzCs5Vyb8zW1Q_AvWfxz9e';
+            const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            const USER_ID = 'mhg_calendar';
+            const TABLE_NAME = 'daily_observations';
+
+            // ---------- 优美句子库 (英文，每天不同) ----------
+            const INSPIRATION_QUOTES = [
+                "Look at the stars. See their beauty. And in that beauty, see yourself. — Drea Stahr",
+                "The world is full of magic things, patiently waiting for our senses to grow sharper. — W.B. Yeats",
+                "Wherever you go, go with all your heart. — Confucius",
+                "Every day brings a choice: to practice stress or to practice peace. — Joan Borysenko",
+                "Let the beauty of what you love be what you do. — Rumi",
+                "Joy is the simplest form of gratitude. — Karl Barth",
+                "The earth has music for those who listen. — Shakespeare",
+                "In the middle of difficulty lies opportunity. — Albert Einstein",
+                "Do small things with great love. — Mother Teresa",
+                "Happiness is not something ready made. It comes from your own actions. — Dalai Lama",
+                "Rest and be kind, you don't have to prove anything. — Jack Kerouac",
+                "Keep your face always toward the sunshine—and shadows will fall behind you. — Walt Whitman",
+                "What you seek is seeking you. — Rumi",
+                "The only journey is the one within. — Rainer Maria Rilke",
+                "And then the day came, when the risk to remain tight in a bud was more painful than the risk it took to blossom. — Anaïs Nin",
+                "Almost everything will work again if you unplug it for a few minutes, including you. — Anne Lamott",
+                "Be gentle with yourself. You are a child of the universe, no less than the trees and the stars. — Max Ehrmann",
+                "This is a wonderful day. I've never seen this one before. — Maya Angelou",
+                "Sometimes the smallest step in the right direction ends up being the biggest step of your life. — Naeem Callaway",
+                "The sun himself is weak when he first rises, and gathers strength and courage as the day gets on. — Charles Dickens",
+                "Write it on your heart that every day is the best day in the year. — Ralph Waldo Emerson",
+                "We are all in the gutter, but some of us are looking at the stars. — Oscar Wilde",
+                "One small crack does not mean that you are broken, it means that you were put to the test and you didn't fall apart. — Linda Poindexter",
+                "Your task is not to seek for love, but merely to seek and find all the barriers within yourself that you have built against it. — Rumi",
+                "When you arise in the morning, think of what a precious privilege it is to be alive—to breathe, to think, to enjoy, to love. — Marcus Aurelius",
+                "There is no path to happiness: happiness is the path. — Buddha",
+                "The secret of getting ahead is getting started. — Mark Twain",
+                "You are never too old to set another goal or to dream a new dream. — C.S. Lewis",
+                "What lies behind us and what lies before us are tiny matters compared to what lies within us. — Ralph Waldo Emerson",
+                "It does not matter how slowly you go as long as you do not stop. — Confucius"
+            ];
+
+            // 根据当天日期 (YYYY-MM-DD) 获取一个确定性的句子索引 (同一天相同，不同天不同)
+            const getDailyQuote = (todayDateStr) => {
+                // 简单哈希: 将日期字符串转为数字和
+                let hash = 0;
+                for (let i = 0; i < todayDateStr.length; i++) {
+                    hash = ((hash << 5) - hash) + todayDateStr.charCodeAt(i);
+                    hash |= 0;
+                }
+                const index = Math.abs(hash) % INSPIRATION_QUOTES.length;
+                return INSPIRATION_QUOTES[index];
+            };
+
+            const app = createApp({
+                setup() {
+                    const selectedDate = ref('');
+                    const diaryText = ref('');
+                    const loading = ref(false);
+                    const saving = ref(false);
+                    const weatherLoading = ref(false);
+                    const statusMessage = ref('');
+                    let statusTimeout = null;
+                    const todayStr = dayjs().format('YYYY-MM-DD');
+
+                    const initDate = () => {
+                        selectedDate.value = todayStr;
+                    };
+
+                    const contentLength = computed(() => {
+                        return diaryText.value ? diaryText.value.trim().length : 0;
+                    });
+
+                    const setStatusMessage = (msg, color = '#b88b4a') => {
+                        if (statusTimeout) clearTimeout(statusTimeout);
+                        statusMessage.value = msg;
+                        statusTimeout = setTimeout(() => {
+                            statusMessage.value = '';
+                        }, 3000);
+                    };
+
+                    const loadDiaryByDate = async () => {
+                        if (!selectedDate.value) return;
+                        loading.value = true;
+                        diaryText.value = '';
+                        try {
+                            const { data, error } = await supabaseClient
+                                .from(TABLE_NAME)
+                                .select('content')
+                                .eq('user_id', USER_ID)
+                                .eq('date', selectedDate.value)
+                                .maybeSingle();
+
+                            if (error) throw error;
+                            if (data && data.content) {
+                                diaryText.value = data.content;
+                            } else {
+                                diaryText.value = '';
+                            }
+                        } catch (err) {
+                            console.error('加载日记失败:', err);
+                            setStatusMessage('加载失败，请检查网络', '#c75c3e');
+                        } finally {
+                            loading.value = false;
+                        }
+                    };
+
+                    const saveDiary = async () => {
+                        if (saving.value) return;
+                        if (!selectedDate.value) {
+                            setStatusMessage('请先选择日期', '#c75c3e');
+                            return;
+                        }
+                        saving.value = true;
+                        const trimmedContent = diaryText.value ? diaryText.value.trim() : '';
+
+                        try {
+                            const { data: existing, error: fetchError } = await supabaseClient
+                                .from(TABLE_NAME)
+                                .select('id')
+                                .eq('user_id', USER_ID)
+                                .eq('date', selectedDate.value)
+                                .maybeSingle();
+
+                            if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+                            if (trimmedContent === '') {
+                                if (existing && existing.id) {
+                                    const { error: delError } = await supabaseClient
+                                        .from(TABLE_NAME)
+                                        .delete()
+                                        .eq('id', existing.id);
+                                    if (delError) throw delError;
+                                    setStatusMessage(`🗑️ 已删除 ${selectedDate.value} 的日记`, '#b88b4a');
+                                    diaryText.value = '';
+                                } else {
+                                    setStatusMessage('日记内容为空，未作更改', '#bc9a6a');
+                                }
+                                return;
+                            }
+
+                            if (existing && existing.id) {
+                                const { error: updateError } = await supabaseClient
+                                    .from(TABLE_NAME)
+                                    .update({ content: trimmedContent, updated_at: new Date().toISOString() })
+                                    .eq('id', existing.id);
+                                if (updateError) throw updateError;
+                                setStatusMessage(`✅ 日记已更新 (${selectedDate.value})`, '#689f38');
+                            } else {
+                                const { error: insertError } = await supabaseClient
+                                    .from(TABLE_NAME)
+                                    .insert({
+                                        user_id: USER_ID,
+                                        date: selectedDate.value,
+                                        content: trimmedContent,
+                                        created_at: new Date().toISOString(),
+                                        updated_at: new Date().toISOString()
+                                    });
+                                if (insertError) throw insertError;
+                                setStatusMessage(`✨ 日记已保存 (${selectedDate.value})`, '#689f38');
+                            }
+                        } catch (err) {
+                            console.error('保存失败:', err);
+                            setStatusMessage('保存失败，请稍后重试', '#c75c3e');
+                        } finally {
+                            saving.value = false;
+                        }
+                    };
+
+                    const clearCurrentText = () => {
+                        if (diaryText.value.trim() === '') return;
+                        diaryText.value = '';
+                        setStatusMessage('已清空当前编辑，保存后生效', '#b88b4a');
+                    };
+
+                    const jumpToToday = () => {
+                        if (selectedDate.value === todayStr) return;
+                        selectedDate.value = todayStr;
+                        loadDiaryByDate();
+                    };
+
+                    const onTextChange = () => {};
+
+                    // ---------- 天气与灵感插入 ----------
+                    // 获取设备地理位置 (Promise)
+                    const getCurrentPosition = () => {
+                        return new Promise((resolve, reject) => {
+                            if (!navigator.geolocation) {
+                                reject(new Error("浏览器不支持地理位置"));
+                                return;
+                            }
+                            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
+                        });
+                    };
+
+                    // 通过经纬度获取城市名称 (反向地理编码，免费 API)
+                    const getCityFromCoords = async (lat, lon) => {
+                        try {
+                            const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=zh`);
+                            const data = await res.json();
+                            if (data.city || data.locality) return data.city || data.locality || data.principalSubdivision || "附近区域";
+                            return "您的位置";
+                        } catch (e) {
+                            console.warn("反向地理编码失败", e);
+                            return "附近地区";
+                        }
+                    };
+
+                    // 通过经纬度获取天气 (open-meteo 免费无需 key)
+                    const getWeatherByCoords = async (lat, lon) => {
+                        try {
+                            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
+                            const res = await fetch(url);
+                            const data = await res.json();
+                            if (data.current_weather) {
+                                const weatherCode = data.current_weather.weathercode;
+                                // weathercode 映射简单天气描述
+                                const weatherMap = {
+                                    0: "晴 ☀️", 1: "主要晴 🌤️", 2: "部分多云 ⛅", 3: "多云 ☁️",
+                                    45: "雾 🌫️", 48: "雾 🌫️", 51: "小雨 🌧️", 53: "中雨 🌧️", 55: "大雨 🌧️",
+                                    61: "小雨 🌦️", 63: "中雨 🌦️", 65: "大雨 🌧️", 71: "小雪 ❄️", 73: "中雪 ❄️", 75: "大雪 ❄️",
+                                    80: "阵雨 ☔", 81: "强阵雨 ☔", 82: "暴雨 ⛈️", 95: "雷暴 ⛈️", 96: "雷暴伴冰雹 ⛈️"
+                                };
+                                const weatherText = weatherMap[weatherCode] || "多云 🌥️";
+                                const temperature = Math.round(data.current_weather.temperature);
+                                return `${weatherText} ${temperature}℃`;
+                            }
+                            return "天气信息获取失败";
+                        } catch (e) {
+                            console.warn("天气API失败", e);
+                            return "无法获取天气";
+                        }
+                    };
+
+                    // 主要插入逻辑
+                    const insertWeatherInspiration = async () => {
+                        if (weatherLoading.value) return;
+                        weatherLoading.value = true;
+                        let locationName = "未知地区";
+                        let weatherDesc = "🌤️ 天气数据获取失败";
+                        let todayReal = dayjs().format("YYYY年MM月DD日");
+                        let successFlag = false;
+
+                        try {
+                            // 1. 获取地理位置
+                            const position = await getCurrentPosition();
+                            const { latitude, longitude } = position.coords;
+                            
+                            // 2. 获取城市名 (反向地理编码)
+                            try {
+                                locationName = await getCityFromCoords(latitude, longitude);
+                            } catch (e) {
+                                locationName = "当前区域";
+                            }
+                            
+                            // 3. 获取天气
+                            try {
+                                weatherDesc = await getWeatherByCoords(latitude, longitude);
+                            } catch (e) {
+                                weatherDesc = "🌡️ 天气获取失败";
+                            }
+                            successFlag = true;
+                        } catch (err) {
+                            console.warn("地理位置获取失败", err);
+                            locationName = "设备位置未授权";
+                            weatherDesc = "位置权限未开启，天气暂缺";
+                        }
+
+                        // 4. 根据今天的实际日期获取一句优美句子（每天不一样）
+                        const todayRealStr = dayjs().format('YYYY-MM-DD');
+                        const dailyQuote = getDailyQuote(todayRealStr);
+                        
+                        // 组装插入的文字块
+                        const weatherLine = `📍 ${locationName}  ·  ${todayReal}  ·  ${weatherDesc}`;
+                        const quoteLine = `✨ 今日灵感：${dailyQuote}`;
+                        const separator = `\n\n`;
+                        const insertionBlock = `${weatherLine}\n${quoteLine}${separator}`;
+
+                        // 将内容追加到当前日记文本框末尾（保留原有内容）
+                        const current = diaryText.value;
+                        const newText = current ? current + insertionBlock : insertionBlock;
+                        diaryText.value = newText;
+                        
+                        if (successFlag) {
+                            setStatusMessage(`✅ 已插入今日天气与灵感句子`, '#689f38');
+                        } else {
+                            setStatusMessage(`⚠️ 插入完成，但天气/位置信息获取受限，请检查权限`, '#c29d60');
+                        }
+                        
+                        weatherLoading.value = false;
+                    };
+
+                    onMounted(() => {
+                        initDate();
+                        loadDiaryByDate();
+                    });
+
+                    return {
+                        selectedDate,
+                        diaryText,
+                        loading,
+                        saving,
+                        weatherLoading,
+                        statusMessage,
+                        contentLength,
+                        todayStr,
+                        loadDiaryByDate,
+                        saveDiary,
+                        clearCurrentText,
+                        jumpToToday,
+                        onTextChange,
+                        insertWeatherInspiration,
+                    };
+                }
+            });
+
+            app.mount('#app');
+        })();
+    </script>
+</body>
+</html>
