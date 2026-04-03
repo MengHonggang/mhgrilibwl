@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>🍀 随机抽取器 · 班级版</title>
+    <style>
+        /* 全局样式 - 柔和、现代、移动优先 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(145deg, #f0f4fa 0%, #e6ecf5 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            margin: 0;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 36px;
+            box-shadow: 0 20px 40px rgba(0, 10, 30, 0.15), 0 6px 12px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 500px;
+            padding: 28px 22px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: #1e2b3c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+            border-left: 8px solid #5f9ea0;
+            padding-left: 18px;
+        }
+
+        h2 span {
+            background: #ffb347;
+            font-size: 1.8rem;
+            border-radius: 50px;
+            padding: 0 8px;
+        }
+
+        /* 输入卡片区 */
+        .input-section {
+            background: white;
+            border-radius: 28px;
+            padding: 20px 18px;
+            margin-bottom: 24px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 8px 16px rgba(0, 20, 40, 0.08);
+        }
+
+        textarea {
+            width: 100%;
+            height: 140px;
+            padding: 18px 16px;
+            font-size: 1rem;
+            line-height: 1.5;
+            border: 2px solid #dbe4ee;
+            border-radius: 24px;
+            background: #f9fcff;
+            resize: vertical;
+            outline: none;
+            transition: border 0.15s, box-shadow 0.15s;
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            border-color: #5f9ea0;
+            box-shadow: 0 0 0 4px rgba(95, 158, 160, 0.2);
+        }
+
+        .info-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            gap: 12px;
+        }
+
+        .badge {
+            background: #e0e9f2;
+            padding: 10px 18px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #1e3b4f;
+            box-shadow: inset 0 1px 3px rgba(255,255,255,0.7), 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .badge strong {
+            font-size: 1.4rem;
+            color: #2c5f6e;
+            margin-right: 6px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* 通用按钮样式 - 大触摸区域 */
+        .btn {
+            border: none;
+            background: white;
+            padding: 12px 24px;
+            border-radius: 60px;
+            font-size: 1.1rem;
+            font-weight: 550;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 8px 14px rgba(0, 30, 50, 0.1), 0 2px 4px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid rgba(255,255,255,0.6);
+            flex: 0 1 auto;
+            min-width: 100px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+            background: #5f9ea0;
+            color: white;
+            border: none;
+            box-shadow: 0 10px 18px rgba(95, 158, 160, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8faff;
+            color: #2c4b5a;
+        }
+
+        .btn-warning {
+            background: #fff2e0;
+            color: #b45f2b;
+        }
+
+        /* 抽取控制面板 */
+        .draw-panel {
+            background: rgba(255,255,255,0.5);
+            backdrop-filter: blur(4px);
+            border-radius: 60px;
+            padding: 18px 20px;
+            margin: 28px 0 22px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .draw-control {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .number-input {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 40px;
+            padding: 4px 8px 4px 18px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .number-input label {
+            font-size: 1rem;
+            color: #334e68;
+            margin-right: 8px;
+        }
+
+        .number-input input {
+            width: 70px;
+            padding: 10px 0 10px 10px;
+            border: none;
+            background: transparent;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1d3e5e;
+            outline: none;
+            text-align: center;
+        }
+
+        .number-input input[type="number"]::-webkit-inner-spin-button {
+            opacity: 0.5;
+            height: 24px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 40px;
+            padding: 8px 18px 8px 12px;
+            gap: 8px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            accent-color: #5f9ea0;
+            border-radius: 8px;
+        }
+
+        .checkbox-item label {
+            font-size: 1rem;
+            color: #1e3a4d;
+            font-weight: 500;
+        }
+
+        .btn-draw {
+            background: #ff8c5a;
+            color: white;
+            font-size: 1.4rem;
+            padding: 18px 32px;
+            border-radius: 60px;
+            border: none;
+            font-weight: 650;
+            box-shadow: 0 15px 25px rgba(255, 140, 90, 0.35);
+            flex: 1 1 auto;
+            min-width: 160px;
+            letter-spacing: 0.5px;
+            transition: 0.12s;
+            touch-action: manipulation;
+        }
+
+        .btn-draw:active {
+            background: #e67644;
+            transform: scale(0.96);
+        }
+
+        /* 结果展示区 */
+        .result-area {
+            background: linear-gradient(135deg, #ffffff 0%, #f4f9ff 100%);
+            border-radius: 40px;
+            padding: 28px 16px;
+            margin: 24px 0 20px;
+            text-align: center;
+            border: 2px dashed #bdd3e6;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        }
+
+        .result-label {
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #4d7184;
+            margin-bottom: 10px;
+        }
+
+        #resultDisplay {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #1b4b5e;
+            line-height: 1.3;
+            word-break: break-word;
+            min-height: 5rem;
+            background: rgba(95,158,160,0.1);
+            border-radius: 50px;
+            padding: 20px 12px;
+            border: 1px solid rgba(95,158,160,0.3);
+        }
+
+        /* 历史记录卡片 */
+        .history-section {
+            background: #ffffffcc;
+            backdrop-filter: blur(4px);
+            border-radius: 30px;
+            padding: 18px 20px;
+            border: 1px solid white;
+        }
+
+        .history-section h3 {
+            font-size: 1.3rem;
+            color: #204c5c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        #historyList {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #historyList li {
+            background: #ecf3fa;
+            border-radius: 50px;
+            padding: 12px 22px;
+            font-size: 1.2rem;
+            color: #1b3b4f;
+            border-left: 6px solid #ffb45b;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+            word-break: break-word;
+        }
+
+        /* 辅助文本 */
+        .note {
+            font-size: 0.9rem;
+            color: #5b7e91;
+            margin-top: 12px;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 480px) {
+            .card { padding: 20px 16px; }
+            h2 { font-size: 1.8rem; }
+            .btn-group .btn { flex: 1 1 40%; }
+            .draw-panel { flex-direction: column; align-items: stretch; }
+            .draw-control { justify-content: center; }
+            .btn-draw { width: 100%; }
+            #resultDisplay { font-size: 2.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>
+            <span>🎲</span> 随机抽取器
+        </h2>
+
+        <!-- 输入区 -->
+        <div class="input-section">
+            <textarea id="studentListInput" placeholder="每行一个姓名或学号+姓名&#10;例如：&#10;张三&#10;李四&#10;2024001 王小明">张三
+李四
+王五
+赵六
+陈七</textarea>
+            <div class="info-bar">
+                <div class="badge">
+                    <strong id="countDisplay">5</strong> 人
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="loadBtn">📋 加载</button>
+                    <button class="btn btn-warning" id="clearBtn">🗑️ 清空</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 抽取控制面板（移动端友好大按钮） -->
+        <div class="draw-panel">
+            <div class="draw-control">
+                <div class="number-input">
+                    <label>抽</label>
+                    <input type="number" id="drawCount" value="1" min="1" max="50" step="1">
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="allowRepeat">
+                    <label>允许重复</label>
+                </div>
+            </div>
+            <button class="btn-draw" id="drawBtn">🎯 抽取</button>
+        </div>
+
+        <!-- 结果显示 -->
+        <div class="result-area">
+            <div class="result-label">本次抽中</div>
+            <div id="resultDisplay">———</div>
+        </div>
+
+        <!-- 历史记录 -->
+        <div class="history-section">
+            <h3>📋 最近记录</h3>
+            <ul id="historyList">
+                <li style="opacity:0.5;">点击抽取查看</li>
+            </ul>
+            <div class="note">最多保留5条 · 点击抽取自动记录</div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // --- 数据 ---
+            let students = [];
+            let history = [];     // 最多5条
+
+            // --- DOM 元素 ---
+            const inputArea = document.getElementById('studentListInput');
+            const countDisplay = document.getElementById('countDisplay');
+            const resultDiv = document.getElementById('resultDisplay');
+            const historyList = document.getElementById('historyList');
+            const loadBtn = document.getElementById('loadBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const drawBtn = document.getElementById('drawBtn');
+            const drawCountInput = document.getElementById('drawCount');
+            const allowRepeatCheck = document.getElementById('allowRepeat');
+
+            // --- 初始化&存储 ---
+            function loadFromStorage() {
+                const saved = localStorage.getItem('studentList_drawer');
+                if (saved) {
+                    try {
+                        students = JSON.parse(saved);
+                    } catch { students = []; }
+                } 
+                // 如果空数据且文本框有默认内容，则使用默认内容作为初始名单
+                if (!saved || students.length === 0) {
+                    // 从文本框获取默认示例（保证一致）
+                    const defaultText = inputArea.value.trim();
+                    students = defaultText ? defaultText.split(/\n/).map(s => s.trim()).filter(s => s !== '') : ['张三','李四','王五','赵六','陈七'];
+                }
+                // 同步文本框并更新UI
+                syncTextareaFromStudents();
+                updateUI();
+            }
+
+            // 保存到 localStorage
+            function saveToStorage() {
+                localStorage.setItem('studentList_drawer', JSON.stringify(students));
+            }
+
+            // 用 students 数组更新文本框内容（保留用户编辑习惯）
+            function syncTextareaFromStudents() {
+                inputArea.value = students.join('\n');
+            }
+
+            // 更新人数显示，不清除结果区域（保留结果）
+            function updateUI() {
+                countDisplay.textContent = students.length;
+                // 文本框已经在 sync 中更新，此处不用重复
+            }
+
+            // 渲染历史
+            function renderHistory() {
+                if (history.length === 0) {
+                    historyList.innerHTML = '<li style="opacity:0.6;">暂无抽取记录</li>';
+                    return;
+                }
+                historyList.innerHTML = history.map(item => `<li>${item}</li>`).join('');
+            }
+
+            // --- 核心操作 ---
+            // 从文本框加载（覆盖 students）
+            function loadFromTextarea() {
+                const raw = inputArea.value.trim();
+                if (raw === '') {
+                    students = [];
+                } else {
+                    students = raw.split(/\n/).map(line => line.trim()).filter(line => line !== '');
+                }
+                // 去重？不主动去重，保留用户原样
+                saveToStorage();
+                // 文本框内容不变（但可能由于用户输入有空行，我们可重新标准化一下，但为了不干扰用户，不用强制标准化，保留原样）
+                // 为了视觉统一，我们选择用 students 重新填充文本框（会格式化掉多余空行）
+                syncTextareaFromStudents();
+                updateUI();
+            }
+
+            // 清空名单
+            function clearList() {
+                students = [];
+                saveToStorage();
+                syncTextareaFromStudents();  // 文本框变空
+                updateUI();
+            }
+
+            // 随机抽取
+            function performDraw() {
+                if (students.length === 0) {
+                    alert('名单为空，请先输入或加载名单');
+                    return;
+                }
+
+                let count = parseInt(drawCountInput.value, 10);
+                if (isNaN(count) || count < 1) count = 1;
+                const maxCount = 50; // 防止数字太大卡顿
+                if (count > maxCount) {
+                    alert(`抽取数量不能超过 ${maxCount}`);
+                    drawCountInput.value = maxCount;
+                    count = maxCount;
+                }
+
+                const allowRepeat = allowRepeatCheck.checked;
+
+                if (!allowRepeat && count > students.length) {
+                    alert(`不允许重复时，抽取数量不能超过总人数 (${students.length})`);
+                    return;
+                }
+
+                let result = [];
+                if (allowRepeat) {
+                    for (let i = 0; i < count; i++) {
+                        const rand = Math.floor(Math.random() * students.length);
+                        result.push(students[rand]);
+                    }
+                } else {
+                    // 洗牌取前 count (Fisher-Yates)
+                    const shuffled = [...students];
+                    for (let i = shuffled.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                    }
+                    result = shuffled.slice(0, count);
+                }
+
+                const resultText = result.join('、');
+                resultDiv.textContent = resultText;
+
+                // 更新历史（保留最近5条）
+                history.unshift(resultText);
+                if (history.length > 5) history.pop();
+                renderHistory();
+            }
+
+            // --- 事件绑定 ---
+            loadBtn.addEventListener('click', function() {
+                loadFromTextarea();
+            });
+
+            clearBtn.addEventListener('click', function() {
+                clearList();
+            });
+
+            drawBtn.addEventListener('click', function() {
+                performDraw();
+            });
+
+            // 限制抽取数量输入范围
+            drawCountInput.addEventListener('change', function() {
+                let val = parseInt(this.value, 10);
+                if (isNaN(val) || val < 1) this.value = 1;
+                if (val > 50) this.value = 50;
+            });
+
+            // 启动：从存储加载
+            loadFromStorage();
+
+            // 如果存储无数据，但文本框已有默认内容且students被设置成默认，需要存一次
+            if (students.length > 0 && !localStorage.getItem('studentList_drawer')) {
+                saveToStorage();
+            }
+
+            // 初始渲染历史（无历史显示占位）
+            renderHistory();
+        })();
+    </script>
+</body>
+</html>
