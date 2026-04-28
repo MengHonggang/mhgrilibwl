@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>高尔顿板 - 三角形钉阵 (10层) | 小球逐个下落模拟</title>
+    <style>
+        * {
+            user-select: none;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #f0f2f5 0%, #e0e5ec 100%);
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .galton-container {
+            background: #2c2f36;
+            border-radius: 2rem;
+            padding: 1.5rem;
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+        }
+
+        .canvas-panel {
+            background: #fef3e2;
+            border-radius: 1.2rem;
+            padding: 0.7rem;
+            box-shadow: inset 0 0 0 2px #fff6, 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 0.8rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background-color: #fff9ef;
+            cursor: pointer;
+        }
+
+        .controls {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.9rem;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .control-group {
+            background: #3a3e48;
+            padding: 0.5rem 1.2rem;
+            border-radius: 2.5rem;
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+            box-shadow: inset 0 1px 0 #5a5e6b, 0 4px 8px rgba(0, 0, 0, 0.25);
+        }
+
+        .control-group label {
+            color: #f2e8cf;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.4px;
+        }
+
+        input, button {
+            font-weight: 600;
+            border: none;
+            border-radius: 2rem;
+            padding: 0.4rem 1rem;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        input[type="number"] {
+            background: #fff5e8;
+            width: 80px;
+            text-align: center;
+            font-family: monospace;
+            font-weight: bold;
+            box-shadow: inset 0 1px 3px #0002, 0 1px 0 #fff6;
+        }
+
+        input[type="range"] {
+            width: 150px;
+            cursor: pointer;
+            background: #d9cfb0;
+            height: 4px;
+            border-radius: 5px;
+        }
+
+        button {
+            background: #ffb347;
+            color: #2c2e3a;
+            font-weight: bold;
+            box-shadow: 0 3px 0 #a45d12;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 0px 0 #a45d12;
+        }
+
+        .reset-btn {
+            background: #e2574c;
+            color: white;
+            box-shadow: 0 3px 0 #8b2c28;
+        }
+
+        .info {
+            background: #1e1f26cc;
+            backdrop-filter: blur(6px);
+            border-radius: 2rem;
+            padding: 0.4rem 1.2rem;
+            font-size: 0.85rem;
+            color: #ffeaac;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .info span {
+            color: #ffdd88;
+            font-weight: bold;
+            background: #00000055;
+            padding: 2px 10px;
+            border-radius: 2rem;
+        }
+
+        .status-badge {
+            background: #2b2e3a;
+            padding: 0.3rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #c7e9ff;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 0.8rem;
+            font-size: 0.7rem;
+            color: #b9bbcc;
+        }
+
+        @media (max-width: 850px) {
+            .control-group { padding: 0.3rem 0.8rem; }
+            button, input { font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+<div>
+    <div class="galton-container">
+        <div class="canvas-panel">
+            <canvas id="galtonCanvas" width="950" height="580" style="width:100%; height:auto; max-width:950px; aspect-ratio:950/580"></canvas>
+        </div>
+        <div class="controls">
+            <div class="control-group">
+                <label>🔘 小球个数</label>
+                <input type="number" id="ballCount" min="1" max="80" value="12" step="1">
+            </div>
+            <div class="control-group">
+                <label>🐢 下落速度</label>
+                <input type="range" id="speedSlider" min="200" max="1000" value="500" step="10">
+                <span id="speedValue" style="color:#ffdd99; font-weight:bold; min-width: 45px;">500ms</span>
+            </div>
+            <div class="control-group">
+                <button id="startBtn">✨ 开始下落</button>
+                <button id="resetBtn" class="reset-btn">🔄 重置全部</button>
+            </div>
+            <div class="info">
+                📦 待落小球: <span id="queueCount">0</span>
+                <div class="status-badge" id="animStatus">⚪ 空闲</div>
+            </div>
+        </div>
+        <footer>⚙️ 钉阵精确三角形排列 (10层) | 随机左右碰撞 | 平滑逐球动画</footer>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 配置参数 ----------
+        const ROWS = 10;                // 钉子的行数 (三角形，第1行1个钉子，第10行10个钉子) 改为10层
+        const SLOT_COUNT = ROWS + 1;    // 底部槽数量 = 11
+        
+        // 画布元素
+        const canvas = document.getElementById('galtonCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 几何布局变量 (每次绘制前动态计算)
+        let geom = {
+            startX: 0,          // 最顶部钉子的中心X (用于定位参考)
+            pegSpacingX: 0,     // 水平相邻钉子间距 (同一行)
+            pegSpacingY: 0,     // 垂直行间距
+            pegRadius: 4,
+            ballRadius: 6,
+            baseY: 0,           // 槽底部的Y坐标 (小球最终停止)
+            slotTopY: 0,        // 槽顶部Y (柱状图基准)
+            slotWidth: 0,
+            margin: { left: 70, right: 70, top: 68, bottom: 88 }
+        };
+        
+        // 分布数据 (每个槽的小球数量)
+        let distribution = new Array(SLOT_COUNT).fill(0);
+        
+        // 动画与队列系统
+        let pendingQueue = [];          // 存储待下落小球对象 { points, finalSlot }
+        let activeBall = null;          // 当前正在动画的小球
+        let animFrameId = null;
+        let isAnimating = false;
+        
+        // 用户参数
+        let stepDurationMs = 500;        // 每段移动时间(ms)
+        
+        // DOM 元素
+        const ballCountInput = document.getElementById('ballCount');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValueSpan = document.getElementById('speedValue');
+        const queueCountSpan = document.getElementById('queueCount');
+        const animStatusSpan = document.getElementById('animStatus');
+        
+        // ---------- 辅助 UI 更新 ----------
+        function updateUI() {
+            queueCountSpan.innerText = pendingQueue.length;
+            if (activeBall) {
+                animStatusSpan.innerText = '🎯 小球下落中';
+                animStatusSpan.style.color = '#ffe0a3';
+            } else {
+                animStatusSpan.innerText = '⚪ 空闲';
+                animStatusSpan.style.color = '#c7e9ff';
+            }
+        }
+        
+        // ---------- 精确计算钉阵布局 (保证三角形严格居中) ----------
+        function computeGeometry() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const leftMargin = geom.margin.left;
+            const rightMargin = geom.margin.right;
+            const topMargin = geom.margin.top;
+            const bottomMargin = geom.margin.bottom;
+            
+            const availableWidth = w - leftMargin - rightMargin;
+            // 最下面一行钉子数量 = ROWS
+            // 钉子水平间距 = 可用宽度 / (ROWS - 1)
+            const pegSpacingX = availableWidth / (ROWS - 1);
+            // 最顶部钉子的X坐标: 使得整行钉子水平居中，顶部只有1个钉子，它的X应该在画布中心
+            const firstPegX = leftMargin + (availableWidth / 2);
+            
+            // 纵向间距: 基于行数分配可用高度
+            const availableHeight = h - topMargin - bottomMargin;
+            const pegSpacingY = availableHeight / (ROWS + 0.6);   // 适当增加底部空间给槽
+            const firstPegY = topMargin + 15;
+            
+            // 底部槽区域: 最后一行钉子的Y坐标
+            const lastPegY = firstPegY + (ROWS - 1) * pegSpacingY;
+            const slotTopY = lastPegY + pegSpacingY * 0.65;
+            const baseY = slotTopY + 32;    // 小球停止位置（槽底部）
+            
+            geom.startX = firstPegX;
+            geom.pegSpacingX = pegSpacingX;
+            geom.pegSpacingY = pegSpacingY;
+            geom.pegRadius = Math.min(5, pegSpacingX * 0.19);
+            geom.ballRadius = Math.min(7, pegSpacingX * 0.21);
+            geom.slotWidth = pegSpacingX;
+            geom.baseY = baseY;
+            geom.slotTopY = slotTopY;
+        }
+        
+        // ---------- 根据行列获取钉子的精确坐标 ----------
+        function getPegCoord(row, col) {
+            // row: 0 ~ ROWS-1 , 该行有 row+1 个钉子
+            // col: 0 ~ row
+            const rowCount = row + 1;
+            const startXOffset = geom.startX - ( (rowCount - 1) * geom.pegSpacingX / 2 );
+            const x = startXOffset + col * geom.pegSpacingX;
+            const y = geom.margin.top + 15 + row * geom.pegSpacingY;
+            return { x, y };
+        }
+        
+        // ---------- 绘制所有钉子 (三角形排列) ----------
+        function drawPegs() {
+            for (let row = 0; row < ROWS; row++) {
+                const pegCount = row + 1;
+                for (let col = 0; col < pegCount; col++) {
+                    const { x, y } = getPegCoord(row, col);
+                    ctx.beginPath();
+                    ctx.arc(x, y, geom.pegRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#6b4226';
+                    ctx.shadowBlur = 2;
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(x, y, geom.pegRadius - 1.2, 0, Math.PI * 2);
+                    ctx.fillStyle = '#c9824b';
+                    ctx.fill();
+                }
+            }
+            ctx.shadowBlur = 0;
+        }
+        
+        // ---------- 绘制底部槽和柱状图 ----------
+        function drawSlotsAndBars() {
+            const slotTop = geom.slotTopY;
+            const slotHeight = 30;
+            const barMaxHeight = 72;
+            const maxCount = Math.max(1, ...distribution, 4);
+            
+            for (let slot = 0; slot < SLOT_COUNT; slot++) {
+                const slotCenterX = geom.startX + (slot - (ROWS/2)) * geom.pegSpacingX;
+                const leftX = slotCenterX - geom.pegSpacingX/2 + 3;
+                const rightX = slotCenterX + geom.pegSpacingX/2 - 3;
+                // 槽背景
+                ctx.fillStyle = '#cfa15e';
+                ctx.fillRect(leftX, slotTop, rightX - leftX, slotHeight);
+                ctx.fillStyle = '#a57c48';
+                ctx.fillRect(leftX + 2, slotTop + 2, rightX - leftX - 4, slotHeight - 4);
+                // 分隔线
+                ctx.beginPath();
+                ctx.strokeStyle = '#6f4f2c';
+                ctx.lineWidth = 1.5;
+                if (slot > 0) {
+                    ctx.moveTo(slotCenterX - geom.pegSpacingX/2, slotTop);
+                    ctx.lineTo(slotCenterX - geom.pegSpacingX/2, slotTop + slotHeight);
+                    ctx.stroke();
+                }
+                
+                // 柱状图
+                const count = distribution[slot];
+                const barHeight = (count / maxCount) * barMaxHeight;
+                const barX = slotCenterX - geom.pegSpacingX * 0.28;
+                const barWidth = geom.pegSpacingX * 0.56;
+                const barBottom = slotTop - 4;
+                const barTop = barBottom - barHeight;
+                ctx.fillStyle = '#e29b4a';
+                ctx.fillRect(barX, barTop, barWidth, barHeight);
+                ctx.fillStyle = '#c96f2e';
+                ctx.fillRect(barX + 2, barTop + 2, barWidth - 4, barHeight - 4);
+                if (count > 0) {
+                    ctx.font = `bold ${Math.max(10, Math.min(13, geom.pegSpacingX * 0.32))}px "Segoe UI"`;
+                    ctx.fillStyle = '#2c2b26';
+                    ctx.fillText(count, slotCenterX - 6, barTop - 4);
+                }
+            }
+            // 外框装饰
+            ctx.strokeStyle = '#b87c3a';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(geom.margin.left - 5, slotTop - 3, canvas.width - (geom.margin.left - 5)*2, slotHeight + 42);
+        }
+        
+        // ---------- 绘制整体高尔顿板 ----------
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fffbf0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            drawPegs();
+            drawSlotsAndBars();
+            ctx.strokeStyle = '#cbae86';
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
+            ctx.restore();
+        }
+        
+        // ---------- 为单个小球生成路径点 (基于精确钉阵的几何) ----------
+        function generateBallPath() {
+            // 起始列索引 (浮点) 基于中心偏移
+            const startColFloat = ROWS / 2.0;   // 中心
+            let currentCol = startColFloat;
+            const colSteps = [currentCol];
+            for (let step = 0; step < ROWS; step++) {
+                const rand = Math.random();
+                const delta = rand < 0.5 ? -0.5 : 0.5;
+                currentCol += delta;
+                colSteps.push(currentCol);
+            }
+            let finalSlot = Math.round(currentCol);
+            finalSlot = Math.min(Math.max(0, finalSlot), SLOT_COUNT - 1);
+            
+            const points = [];
+            // 1. 释放点 (顶部上方)
+            const startX = geom.startX + (startColFloat - ROWS/2) * geom.pegSpacingX;
+            const startY = geom.margin.top + 5;
+            points.push({ x: startX, y: startY });
+            
+            // 2. 每一层之后的通过点 (钉子间隙)
+            for (let k = 1; k <= ROWS; k++) {
+                const col = colSteps[k];
+                const x = geom.startX + (col - ROWS/2) * geom.pegSpacingX;
+                const pegRowY = geom.margin.top + 15 + (k-1) * geom.pegSpacingY;
+                const y = pegRowY + geom.pegSpacingY * 0.55;
+                points.push({ x, y });
+            }
+            
+            // 3. 最终落入槽底部点
+            const finalX = geom.startX + (finalSlot - ROWS/2) * geom.pegSpacingX;
+            const finalY = geom.baseY + 6;
+            points.push({ x: finalX, y: finalY });
+            
+            return { points, finalSlot };
+        }
+        
+        // ---------- 动画核心 (基于requestAnimationFrame) ----------
+        function drawMovingBall() {
+            if (activeBall && activeBall.currentPos) {
+                ctx.beginPath();
+                ctx.arc(activeBall.currentPos.x, activeBall.currentPos.y, geom.ballRadius, 0, Math.PI*2);
+                ctx.fillStyle = '#dd3b4a';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#a0232f';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(activeBall.currentPos.x, activeBall.currentPos.y, geom.ballRadius-1.8, 0, Math.PI*2);
+                ctx.fillStyle = '#ff858d';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(activeBall.currentPos.x-2, activeBall.currentPos.y-2, 2, 0, Math.PI*2);
+                ctx.fillStyle = '#fffde7';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        function updateAnimation(now) {
+            if (!activeBall) {
+                if (pendingQueue.length > 0 && !isAnimating) {
+                    startNextBall();
+                } else {
+                    if (animFrameId) cancelAnimationFrame(animFrameId);
+                    animFrameId = null;
+                    isAnimating = false;
+                    updateUI();
+                    drawBoard();
+                    return;
+                }
+            }
+            
+            if (activeBall) {
+                const anim = activeBall;
+                const { points, curSeg, startTime, segDuration, onComplete, finalSlot } = anim;
+                if (curSeg >= points.length - 1) {
+                    if (onComplete) onComplete(finalSlot);
+                    activeBall = null;
+                    isAnimating = false;
+                    drawBoard();
+                    updateUI();
+                    requestAnimationFrame(function loop(ts){
+                        updateAnimation(ts);
+                    });
+                    return;
+                }
+                
+                const nowTime = performance.now();
+                let t = Math.min(1, (nowTime - startTime) / segDuration);
+                const ease = 1 - Math.pow(1 - t, 1.5);
+                const p0 = points[curSeg];
+                const p1 = points[curSeg+1];
+                const x = p0.x + (p1.x - p0.x) * ease;
+                const y = p0.y + (p1.y - p0.y) * ease;
+                anim.currentPos = { x, y };
+                
+                if (t >= 1.0) {
+                    anim.curSeg++;
+                    anim.startTime = nowTime;
+                    anim.currentPos = { ...points[anim.curSeg] };
+                }
+                drawBoard();
+                drawMovingBall();
+            }
+            animFrameId = requestAnimationFrame(updateAnimation);
+        }
+        
+        function startNextBall() {
+            if (activeBall) return;
+            if (pendingQueue.length === 0) {
+                isAnimating = false;
+                updateUI();
+                if (animFrameId) cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+                drawBoard();
+                return;
+            }
+            isAnimating = true;
+            const ballData = pendingQueue.shift();
+            const { points, finalSlot } = ballData;
+            if (!points || points.length < 2) return;
+            
+            activeBall = {
+                points: points,
+                curSeg: 0,
+                startTime: performance.now(),
+                segDuration: stepDurationMs,
+                currentPos: { ...points[0] },
+                finalSlot: finalSlot,
+                onComplete: (slotIdx) => {
+                    if (slotIdx >= 0 && slotIdx < SLOT_COUNT) {
+                        distribution[slotIdx]++;
+                    }
+                    drawBoard();
+                    activeBall = null;
+                    isAnimating = false;
+                    updateUI();
+                }
+            };
+            updateUI();
+            drawBoard();
+            drawMovingBall();
+        }
+        
+        function addBallsToQueue(count) {
+            for (let i = 0; i < count; i++) {
+                const { points, finalSlot } = generateBallPath();
+                pendingQueue.push({ points, finalSlot });
+            }
+            updateUI();
+            if (!animFrameId && !activeBall) {
+                animFrameId = requestAnimationFrame(updateAnimation);
+            } else if (!activeBall && pendingQueue.length > 0 && !isAnimating) {
+                startNextBall();
+                if (!animFrameId) animFrameId = requestAnimationFrame(updateAnimation);
+            }
+        }
+        
+        function fullReset() {
+            if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+            }
+            pendingQueue = [];
+            activeBall = null;
+            isAnimating = false;
+            distribution.fill(0);
+            computeGeometry();
+            drawBoard();
+            updateUI();
+        }
+        
+        function initEvents() {
+            startBtn.addEventListener('click', () => {
+                let count = parseInt(ballCountInput.value);
+                if (isNaN(count) || count < 1) count = 1;
+                if (count > 80) count = 80;
+                addBallsToQueue(count);
+            });
+            
+            resetBtn.addEventListener('click', () => {
+                fullReset();
+            });
+            
+            speedSlider.addEventListener('input', (e) => {
+                stepDurationMs = parseInt(e.target.value);
+                speedValueSpan.innerText = stepDurationMs + "ms";
+            });
+            stepDurationMs = parseInt(speedSlider.value);
+            speedValueSpan.innerText = stepDurationMs + "ms";
+        }
+        
+        function handleResize() {
+            computeGeometry();
+            drawBoard();
+            if (activeBall) {
+                fullReset();
+            } else {
+                drawBoard();
+            }
+        }
+        
+        window.addEventListener('resize', () => {
+            setTimeout(handleResize, 60);
+        });
+        
+        function init() {
+            computeGeometry();
+            drawBoard();
+            initEvents();
+            setTimeout(() => {
+                computeGeometry();
+                drawBoard();
+            }, 30);
+        }
+        
+        init();
+    })();
+</script>
+</body>
+</html>

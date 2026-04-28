@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>频率分布直方图到正态密度曲线演示</title>
+    <!--  -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #f5f7fc 0%, #eef2f8 100%);
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+        }
+
+        /* 主卡片容器：优雅圆角，轻阴影，适应不同屏幕 */
+        .ggb-container {
+            max-width: 1100px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        /* 头部简明描述 */
+        .header {
+            padding: 1.2rem 1.8rem 0.6rem 1.8rem;
+            border-bottom: 1px solid #e9edf2;
+            background: rgba(255,255,255,0.9);
+        }
+
+        .header h1 {
+            font-size: 1.7rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #1e3c72, #2b4c7c);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.2px;
+            margin-bottom: 0.25rem;
+        }
+
+        .header p {
+            color: #4a627a;
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* 嵌入区域 — 自适应宽高，保持比例，GeoGebra 交互完美 */
+        .geogebra-wrapper {
+            padding: 1.5rem 1.8rem 1.8rem 1.8rem;
+            background: #ffffff;
+        }
+
+        .responsive-iframe {
+            position: relative;
+            width: 100%;
+            /* 使用 aspect-ratio 保证高宽比接近于 800/600 ≈ 1.333，同时移动端友好 */
+            aspect-ratio: 800 / 600;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            background: #fefefe;
+            border: 1px solid #e2e8f0;
+            transition: box-shadow 0.2s;
+        }
+
+        .responsive-iframe:hover {
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border: none;
+            background: #fff;
+        }
+
+        /* 底部提供说明和操作提示，提升用户体验 */
+        .footer-info {
+            padding: 0.9rem 1.8rem 1.5rem 1.8rem;
+            background: #f9fbfd;
+            border-top: 1px solid #e9edf2;
+            font-size: 0.85rem;
+            color: #3b5a7c;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .attribution {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .attribution a {
+            color: #2c6e9e;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .attribution a:hover {
+            color: #0f3b5c;
+            text-decoration: underline;
+        }
+
+        .badge {
+            background: #eef2ff;
+            border-radius: 60px;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #285e8f;
+        }
+
+        button.tip-btn {
+            background: none;
+            border: 1px solid #cbdde9;
+            background-color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 40px;
+            color: #2c6e9e;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        button.tip-btn:hover {
+            background-color: #e6f0fa;
+            border-color: #8fb4d0;
+        }
+
+        /* 移动端友好调整内边距 */
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem;
+            }
+            .header h1 {
+                font-size: 1.4rem;
+            }
+            .geogebra-wrapper {
+                padding: 1rem;
+            }
+            .footer-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .responsive-iframe {
+                aspect-ratio: 4 / 3;
+            }
+        }
+
+        /* 针对小尺寸保持比例不乱 */
+        @media (max-width: 480px) {
+            .header p {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="ggb-container">
+    <div class="header">
+        <h1>📐 频率分布直方图到正态密度曲线的进化</h1>
+        <p></p>
+    </div>
+
+    <div class="geogebra-wrapper">
+        <div class="responsive-iframe">
+            <!-- 关键嵌入部分: 使用原始提供的 GeoGebra 经典应用链接，添加 embed 参数及响应式属性 -->
+            <!-- 确保 allowfullscreen 允许全屏，sandbox 适度放宽以保证功能正常，但保留安全性 -->
+            <iframe 
+                src="https://www.geogebra.org/classic/zp3hqpqq?embed" 
+                title="GeoGebra 交互式数学应用 - 动态几何与代数"
+                width="100%" 
+                height="100%" 
+                allowfullscreen 
+                style="border:0; border-radius: 16px;"
+                loading="lazy"
+                referrerpolicy="origin"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-pointer-lock allow-top-navigation-by-user-activation allow-modals">
+                <!-- 备选文本，如果浏览器不支持iframe则显示提示 -->
+                您的浏览器不支持内嵌框架，请访问原始链接: <a href="https://www.geogebra.org/classic/zp3hqpqq" target="_blank">GeoGebra 工作区</a>
+            </iframe>
+        </div>
+    </div>
+
+    <div class="footer-info">
+        <div class="attribution">
+            <span>🧮 动态数学工具</span>
+            <span class="badge">🔍 可拖拽/缩放</span>
+            <span>✨ 由 <a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">作者：中国孟 GeoGebra</a> 提供支持</span>
+        </div>
+        <div>
+            <button class="tip-btn" id="fullscreenHintBtn">🖱️ 全屏体验 ↗</button>
+            <button class="tip-btn" id="resetViewBtn" style="margin-left: 8px;">🔄 重置视角提示</button>
+        </div>
+    </div>
+</div>
+
+<!-- 可选小脚本：提供交互提示和便捷操作 (不影响GeoGebra核心功能) -->
+<script>
+    (function() {
+        // 获取 iframe 元素
+        const iframeElement = document.querySelector('iframe');
+        const fullscreenBtn = document.getElementById('fullscreenHintBtn');
+        const resetBtn = document.getElementById('resetViewBtn');
+        
+        // 提示函数 (优雅的非侵入toast消息)
+        function showFloatingMessage(message, type = 'info') {
+            // 创建临时提示容器
+            let toast = document.createElement('div');
+            toast.innerText = message;
+            toast.style.position = 'fixed';
+            toast.style.bottom = '24px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.backgroundColor = type === 'info' ? '#1e2f3e' : '#2c6e9e';
+            toast.style.color = 'white';
+            toast.style.padding = '10px 20px';
+            toast.style.borderRadius = '40px';
+            toast.style.fontSize = '0.85rem';
+            toast.style.fontWeight = '500';
+            toast.style.zIndex = '9999';
+            toast.style.boxShadow = '0 6px 14px rgba(0,0,0,0.2)';
+            toast.style.backdropFilter = 'blur(4px)';
+            toast.style.fontFamily = 'inherit';
+            toast.style.pointerEvents = 'none';
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.2s ease';
+            document.body.appendChild(toast);
+            // 渐显
+            setTimeout(() => { toast.style.opacity = '1'; }, 10);
+            // 自动消失
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 250);
+            }, 2800);
+        }
+
+        // 全屏提示 —— 由于跨域限制无法直接全屏iframe内内容，但可以尝试全屏外层容器或者给出实用指引。
+        // 最佳实践：给用户提示如何利用 GeoGebra 自带全屏功能（工具栏上一般有全屏按钮），或对整个卡片全屏。
+        // 这里提供更友好的指南: 我们可以将 .ggb-container 全屏，让体验更沉浸。
+        function requestContainerFullscreen() {
+            const container = document.querySelector('.ggb-container');
+            if (!container) return;
+            if (container.requestFullscreen) {
+                container.requestFullscreen().then(() => {
+                    showFloatingMessage('✅ 已进入全屏模式，按 ESC 或 F11 退出', 'info');
+                }).catch(err => {
+                    console.warn(`全屏请求失败: ${err.message}`);
+                    showFloatingMessage('⚠️ 无法全屏，请尝试手动使用浏览器全屏或 GeoGebra 内部全屏按钮', 'info');
+                });
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+                showFloatingMessage('✅ 全屏模式 (webkit)', 'info');
+            } else if (container.msRequestFullscreen) {
+                container.msRequestFullscreen();
+                showFloatingMessage('全屏模式', 'info');
+            } else {
+                showFloatingMessage('💡 提示: 您可以点击 GeoGebra 工具栏右下角 [...] 中的全屏图标，获得最佳体验', 'info');
+            }
+        }
+
+        // 重置视角提示: 无法直接跨域控制 GeoGebra 内部视图，但可以提供指导说明。
+        function giveResetGuidance() {
+            showFloatingMessage('📐 重置视图指引: 点击 GeoGebra 右上角「主页」图标 或 使用工具栏「复原」按钮重置视角', 'info');
+            // 额外动态高亮提示（可选，不侵入）控制台不报错
+            const iframeDoc = iframeElement?.contentDocument || iframeElement?.contentWindow?.document;
+            // 由于跨域限制无法直接操作，但我们可以不做违规操作，仅显示指引即可
+        }
+
+        // 绑定按钮事件
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', requestContainerFullscreen);
+        }
+        if (resetBtn) {
+            resetBtn.addEventListener('click', giveResetGuidance);
+        }
+        
+        // 增加一个小特性：加载完成后展示欢迎提示，表示画板已就绪（优雅且不过分打扰）
+        window.addEventListener('load', () => {
+            // 延迟一点点显示，确保页面渲染完成
+            setTimeout(() => {
+                // 只在初次加载显示简短的提示，同时不影响沉浸感
+                const hasSeenHint = sessionStorage.getItem('geogebra_hint_seen');
+                if (!hasSeenHint) {
+                    showFloatingMessage('✨ 拖动点/线，探索动态几何！支持鼠标滚轮缩放', 'info');
+                    sessionStorage.setItem('geogebra_hint_seen', 'true');
+                }
+            }, 800);
+        });
+        
+        // 可选：当 iframe 加载错误时提供备用连接 (但由于src有效，仅做健壮性)
+        if (iframeElement) {
+            iframeElement.addEventListener('error', () => {
+                const wrapper = document.querySelector('.responsive-iframe');
+                if (wrapper && !wrapper.querySelector('.error-fallback')) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-fallback';
+                    errorDiv.style.position = 'absolute';
+                    errorDiv.style.top = '0';
+                    errorDiv.style.left = '0';
+                    errorDiv.style.width = '100%';
+                    errorDiv.style.height = '100%';
+                    errorDiv.style.backgroundColor = '#f8fafc';
+                    errorDiv.style.display = 'flex';
+                    errorDiv.style.flexDirection = 'column';
+                    errorDiv.style.alignItems = 'center';
+                    errorDiv.style.justifyContent = 'center';
+                    errorDiv.style.borderRadius = '20px';
+                    errorDiv.style.zIndex = '10';
+                    errorDiv.innerHTML = `<p style="color:#b91c1c; font-weight:500;">⚠️ GeoGebra 画板加载失败</p>
+                                           <p style="margin-top:8px; font-size:0.85rem;">请检查网络后 <a href="https://www.geogebra.org/classic/zp3hqpqq" target="_blank" style="color:#2c6e9e;">点击这里打开原图</a></p>`;
+                    wrapper.style.position = 'relative';
+                    wrapper.appendChild(errorDiv);
+                    showFloatingMessage('无法加载GeoGebra资源，请检查网络连接', 'info');
+                }
+            });
+        }
+
+        // 优雅处理任何可能的sandbox限制导致控制台警告但不影响主体功能
+        // 额外监听: 确保移动端触摸正常，并且iframe尺寸自适应
+        function adjustIframeHeightOnMobile() {
+            // 交由CSS aspect-ratio处理，但额外确保某些老旧浏览器表现良好
+            if (iframeElement && window.innerWidth < 560) {
+                // 确保宽度自适应, aspect-ratio已经足够, 无额外操作
+            }
+        }
+        window.addEventListener('resize', adjustIframeHeightOnMobile);
+        adjustIframeHeightOnMobile();
+    })();
+</script>
+</body>
+</html>

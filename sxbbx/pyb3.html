@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>数学教学：模拟扔硬币100次  | 二项分布演示 + 横排历史记录（大字体表格）</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none; /* 避免教学拖动时选中文字，不影响复制 */
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(145deg, #f5f7fc 0%, #eef2f5 100%);
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 主卡片容器 */
+        .card {
+            max-width: 1500px;
+            width: 100%;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(0px);
+            border-radius: 48px;
+            box-shadow: 0 25px 45px -12px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.05);
+            overflow: hidden;
+            padding: 28px 30px 38px 30px;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            margin: 0 0 0.25rem 0;
+            color: #1e2f3e;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        h1 small {
+            font-size: 0.85rem;
+            font-weight: normal;
+            background: #d9e2ef;
+            padding: 6px 14px;
+            border-radius: 60px;
+            color: #1e4663;
+        }
+
+        .sub {
+            color: #2c4b6e;
+            border-left: 4px solid #f3b33d;
+            padding-left: 16px;
+            margin: 12px 0 20px 0;
+            font-weight: 450;
+            background: #fff6e5;
+            border-radius: 0 20px 20px 0;
+            line-height: 1.3;
+        }
+
+        /* 统计面板：只保留当前正面次数 + 右侧大区域 (表格+按钮) */
+        .stats-panel {
+            background: #ffffffcc;
+            backdrop-filter: blur(4px);
+            border-radius: 32px;
+            padding: 18px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.05);
+            border: 1px solid #ffffff;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .counter-box {
+            background: #1e2f3e;
+            padding: 12px 28px;
+            border-radius: 48px;
+            color: white;
+            text-align: center;
+            min-width: 180px;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 6px 12px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .counter-box .label {
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            font-weight: 400;
+            opacity: 0.8;
+        }
+
+        .counter-box .number {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-top: 6px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* 右侧组合区域：横排历史记录表格 + 按钮并排 */
+        .right-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        /* 横排历史记录容器 */
+        .history-compact {
+            background: #fdf9f0;
+            border-radius: 28px;
+            padding: 12px 18px;
+            flex: 3;
+            min-width: 280px;
+            box-shadow: inset 0 0 0 1px #f8efdf, 0 2px 6px rgba(0,0,0,0.02);
+            border: 1px solid #ede3cf;
+        }
+
+        .history-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #b87c3a;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-title span {
+            background: #e7dcc8;
+            border-radius: 40px;
+            padding: 2px 10px;
+            font-size: 0.7rem;
+        }
+
+        .clear-record-btn {
+            background: none;
+            border: 1px solid #dccfba;
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            border-radius: 26px;
+            color: #8b6942;
+            box-shadow: none;
+            margin-left: 8px;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+
+        .clear-record-btn:hover {
+            background: #e7dcc8;
+            transform: scale(0.96);
+        }
+
+        /* 横排表格样式 (支持横向滚动) - 字体调大 */
+        .horizontal-history {
+            overflow-x: auto;
+            padding-bottom: 6px;
+        }
+
+        .history-horiz-table {
+            display: inline-block;
+            min-width: 100%;
+            border-collapse: collapse;
+            font-size: 1.05rem;      /* 整体表格字体变大 */
+            font-weight: 500;
+        }
+
+        .history-horiz-table th, 
+        .history-horiz-table td {
+            padding: 8px 16px;        /* 增加内边距，更宽松 */
+            text-align: center;
+            border-left: 1px solid #e6dccb;
+            border-right: 1px solid #e6dccb;
+            font-weight: 600;
+        }
+
+        .history-horiz-table th {
+            background: #f4ecdf;
+            color: #6a4e2a;
+            font-weight: 800;
+            font-size: 1rem;          /* 表头字体加大 */
+        }
+
+        .history-horiz-table td {
+            background: #fffcf5;
+            color: #c0581a;
+            font-weight: 800;
+            font-size: 1.15rem;       /* 正面次数数值字体更大更醒目 */
+        }
+
+        .history-horiz-table tr:first-child th {
+            border-top: 1px solid #e6dccb;
+        }
+
+        .history-horiz-table tr:last-child td {
+            border-bottom: 1px solid #e6dccb;
+        }
+
+        /* 重新抛掷按钮样式 (放在表格右边) */
+        .simulate-btn-wrapper {
+            flex-shrink: 0;
+        }
+
+        button {
+            background: #f3b33d;
+            border: none;
+            font-weight: 600;
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.15s linear;
+            color: #2d2b26;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background: #e6a229;
+            transform: scale(0.97);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        button:active {
+            transform: scale(0.96);
+        }
+
+        /* 硬币网格布局 — 5行，每行20个，硬币尺寸缩小 */
+        .results-table-container {
+            background: white;
+            border-radius: 32px;
+            padding: 20px 16px 16px 16px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(20, minmax(48px, 52px));
+            gap: 10px 8px;
+            padding: 6px 8px 12px 8px;
+            justify-content: center;
+        }
+
+        /* 硬币卡片 */
+        .coin-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f5e5c8;
+            border-radius: 50%;
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: 52px;
+            margin: 0 auto;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(255, 255, 200, 0.8), inset 0 -1px 2px rgba(0, 0, 0, 0.1);
+            border: 1.5px solid #e0bc7a;
+            transition: transform 0.1s ease, box-shadow 0.1s;
+            cursor: default;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .coin-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+            background-color: #efd494;
+        }
+
+        .coin-index {
+            position: absolute;
+            bottom: 2px;
+            right: 3px;
+            font-size: 0.45rem;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.7);
+            color: #ffefb9;
+            border-radius: 30px;
+            padding: 1px 4px;
+            backdrop-filter: blur(3px);
+            font-family: monospace;
+            z-index: 2;
+            pointer-events: none;
+            letter-spacing: 0.3px;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 1100px) {
+            .results-grid {
+                grid-template-columns: repeat(20, minmax(44px, 48px));
+                gap: 8px 6px;
+            }
+            .coin-card {
+                max-width: 48px;
+            }
+        }
+
+        @media (max-width: 920px) {
+            .results-grid {
+                gap: 6px 5px;
+            }
+            .coin-card {
+                max-width: 44px;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .results-grid {
+                grid-template-columns: repeat(20, minmax(40px, 42px));
+            }
+            .coin-card {
+                max-width: 42px;
+            }
+            .stats-panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .counter-box {
+                width: 100%;
+            }
+            .right-panel {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .simulate-btn-wrapper button {
+                width: 100%;
+                justify-content: center;
+            }
+            /* 小屏幕下表格字体稍微调整，但仍保持较大 */
+            .history-horiz-table th {
+                font-size: 0.9rem;
+                padding: 6px 12px;
+            }
+            .history-horiz-table td {
+                font-size: 1rem;
+                padding: 6px 12px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .results-table-container {
+                overflow-x: auto;
+            }
+            .results-grid {
+                min-width: 760px;
+            }
+            .history-horiz-table th {
+                font-size: 0.85rem;
+                padding: 5px 10px;
+            }
+            .history-horiz-table td {
+                font-size: 0.95rem;
+                padding: 5px 10px;
+            }
+        }
+
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #6b7f8f;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>
+        🪙 模拟扔硬币100次
+        <small>二项分布 B(100, 0.5) | 5行×20列 + 横排历史记录（大字体表格）</small>
+    </h1>
+    <div class="sub">         <br>
+        📊 每次投掷相互独立，显示100次结果，统计正面次数。右侧横排表格记录「第几次抛掷」与「正面向上个数」，多抛一次增加一列。
+    </div>
+
+    <!-- 统计面板：仅显示当前正面次数，右侧是历史表格+按钮 -->
+    <div class="stats-panel">
+        <div class="counter-box">
+            <div class="label">🎯 当前正面向上次数</div>
+            <div class="number" id="headsCountDisplay">0</div>
+        </div>
+        
+        <div class="right-panel">
+            <!-- 横排历史记录区域 -->
+            <div class="history-compact">
+                <div class="history-title">
+                    📜 抛掷历史记录 <span id="historyCountBadge">0 次</span>
+                    <button id="clearHistoryBtn" class="clear-record-btn">🗑️ 清空</button>
+                </div>
+                <div class="horizontal-history" id="horizontalHistoryContainer">
+                    <table class="history-horiz-table" id="historyHorizTable">
+                        <thead id="horizThead">
+                            <tr id="headerRow">
+                                <th>抛掷次数</th>
+                            </tr>
+                        </thead>
+                        <tbody id="horizTbody">
+                            <tr id="dataRow">
+                                <td>正面次数</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 重新抛掷按钮放在表格右边 -->
+            <div class="simulate-btn-wrapper">
+                <button id="simulateBtn">
+                    🔄 重新抛掷100次
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 硬币展示区：100枚硬币图片网格 (5行x20列) -->
+    <div class="results-table-container">
+        <div class="results-grid" id="resultsGrid">
+            <!-- 动态生成100个硬币图片卡片，js填充 -->
+        </div>
+    </div>
+
+    <footer>
+        💡 教学提示：每一次点击「重新抛掷100次」都会生成全新样本，并在右侧表格增加一列：记录“第几次抛掷”和“本次正面向上个数”。表格字体已加大，便于课堂展示。
+        <br>📁 请确保 <code>ybz.png</code> (正面) 与 <code>ybf.png</code> (反面) 与网页文件在同一目录下。硬币排列5行×20列。设计制作：中国孟
+    </footer>
+</div>
+
+<script>
+    (function() {
+        // DOM 元素
+        const gridContainer = document.getElementById('resultsGrid');
+        const headsCountSpan = document.getElementById('headsCountDisplay');
+        const simulateBtn = document.getElementById('simulateBtn');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+        const historyCountBadge = document.getElementById('historyCountBadge');
+        const headerRow = document.getElementById('headerRow');
+        const dataRow = document.getElementById('dataRow');
+
+        // 硬币图片路径
+        const FRONT_IMG = 'ybz.png';
+        const BACK_IMG = 'ybf.png';
+        
+        // 存储当前100次投掷结果
+        let currentTosses = new Array(100).fill(false);
+        
+        // 历史记录: 存储每一次抛掷的正面次数 (按顺序)
+        let historyHeadsList = [];     // 元素为数字 (正面次数)
+        
+        // 辅助: 掷硬币 p=0.5
+        function tossCoin() {
+            return Math.random() < 0.5;
+        }
+        
+        // 模拟100次投掷
+        function simulateHundred() {
+            const results = [];
+            let headsCount = 0;
+            for (let i = 0; i < 100; i++) {
+                const isHead = tossCoin();
+                results.push(isHead);
+                if (isHead) headsCount++;
+            }
+            return { results, headsCount };
+        }
+        
+        // 处理图片加载错误时的占位符
+        function handleImageError(imgElement, side) {
+            imgElement.onerror = null;
+            imgElement.style.objectFit = 'contain';
+            imgElement.style.backgroundColor = '#e7cfa1';
+            if (side === 'front') {
+                imgElement.alt = '正面图片缺失(ybz.png)';
+                imgElement.title = '请放置ybz.png在目录下';
+                const parent = imgElement.parentElement;
+                if (parent && !parent.querySelector('.fallback-text')) {
+                    const span = document.createElement('span');
+                    span.className = 'fallback-text';
+                    span.innerText = '正';
+                    span.style.position = 'absolute';
+                    span.style.top = '50%';
+                    span.style.left = '50%';
+                    span.style.transform = 'translate(-50%, -50%)';
+                    span.style.fontSize = '1rem';
+                    span.style.fontWeight = 'bold';
+                    span.style.color = '#b45f1b';
+                    span.style.textShadow = '0 0 2px white';
+                    span.style.pointerEvents = 'none';
+                    parent.style.position = 'relative';
+                    parent.appendChild(span);
+                }
+            } else {
+                imgElement.alt = '反面图片缺失(ybf.png)';
+                imgElement.title = '请放置ybf.png在目录下';
+                const parent = imgElement.parentElement;
+                if (parent && !parent.querySelector('.fallback-text')) {
+                    const span = document.createElement('span');
+                    span.className = 'fallback-text';
+                    span.innerText = '反';
+                    span.style.position = 'absolute';
+                    span.style.top = '50%';
+                    span.style.left = '50%';
+                    span.style.transform = 'translate(-50%, -50%)';
+                    span.style.fontSize = '1rem';
+                    span.style.fontWeight = 'bold';
+                    span.style.color = '#b45f1b';
+                    span.style.textShadow = '0 0 2px white';
+                    span.style.pointerEvents = 'none';
+                    parent.style.position = 'relative';
+                    parent.appendChild(span);
+                }
+            }
+        }
+        
+        // 渲染硬币网格 (5x20)
+        function renderAllCoins(resultsArray) {
+            if (!gridContainer) return;
+            gridContainer.innerHTML = '';
+            
+            let headsTotal = 0;
+            for (let i = 0; i < resultsArray.length; i++) {
+                if (resultsArray[i]) headsTotal++;
+            }
+            
+            for (let idx = 0; idx < 100; idx++) {
+                const isHead = resultsArray[idx];
+                const tossNumber = idx + 1;
+                
+                const coinDiv = document.createElement('div');
+                coinDiv.className = 'coin-card';
+                
+                const img = document.createElement('img');
+                img.className = 'coin-img';
+                img.alt = isHead ? '硬币正面' : '硬币反面';
+                img.title = isHead ? `第${tossNumber}次: 正面` : `第${tossNumber}次: 反面`;
+                
+                if (isHead) {
+                    img.src = FRONT_IMG;
+                    img.onerror = function() { handleImageError(img, 'front'); };
+                } else {
+                    img.src = BACK_IMG;
+                    img.onerror = function() { handleImageError(img, 'back'); };
+                }
+                
+                img.onload = function() {
+                    const parent = img.parentElement;
+                    if (parent) {
+                        const existingFallback = parent.querySelector('.fallback-text');
+                        if (existingFallback) existingFallback.remove();
+                        img.style.backgroundColor = '';
+                        img.style.objectFit = 'cover';
+                    }
+                };
+                
+                const indexBadge = document.createElement('div');
+                indexBadge.className = 'coin-index';
+                indexBadge.textContent = `${tossNumber}`;
+                
+                coinDiv.appendChild(img);
+                coinDiv.appendChild(indexBadge);
+                gridContainer.appendChild(coinDiv);
+            }
+            
+            // 更新当前正面次数显示
+            headsCountSpan.innerText = headsTotal;
+            return headsTotal;
+        }
+        
+        // 横排历史表格渲染：根据 historyHeadsList 动态生成列（抛掷次数列 + 正面次数列）
+        function renderHorizontalHistory() {
+            if (!headerRow || !dataRow) return;
+            
+            const len = historyHeadsList.length;
+            // 清空现有列
+            while (headerRow.firstChild) headerRow.removeChild(headerRow.firstChild);
+            while (dataRow.firstChild) dataRow.removeChild(dataRow.firstChild);
+            
+            if (len === 0) {
+                // 无数据时显示提示列
+                const emptyTh = document.createElement('th');
+                emptyTh.innerText = '暂无抛掷';
+                emptyTh.colSpan = 1;
+                const emptyTd = document.createElement('td');
+                emptyTd.innerText = '—';
+                emptyTd.style.fontWeight = '600';
+                headerRow.appendChild(emptyTh);
+                dataRow.appendChild(emptyTd);
+                historyCountBadge.innerText = '0 次';
+                return;
+            }
+            
+            // 为每一次实验创建一列 (th: 第X次抛掷, td: 正面个数)
+            for (let i = 0; i < len; i++) {
+                const th = document.createElement('th');
+                th.innerText = `第${i+1}次`;
+                th.style.fontWeight = '800';
+                th.style.fontSize = '1rem';        // 表头字体较大
+                const td = document.createElement('td');
+                td.innerText = `${historyHeadsList[i]}`;
+                td.style.fontWeight = '800';
+                td.style.fontSize = '1.2rem';       // 正面次数数值字体更大更清晰
+                td.style.color = '#c0581a';
+                headerRow.appendChild(th);
+                dataRow.appendChild(td);
+            }
+            
+            historyCountBadge.innerText = `${len} 次`;
+        }
+        
+        // 添加本次抛掷记录 (正面次数)
+        function addRecord(headsCount) {
+            historyHeadsList.push(headsCount);
+            renderHorizontalHistory();
+        }
+        
+        // 清空所有历史记录
+        function clearHistory() {
+            historyHeadsList = [];
+            renderHorizontalHistory();
+        }
+        
+        // 全新模拟并刷新硬币界面 + 记录本次正面次数
+        function runNewSimulationAndRecord() {
+            const { results, headsCount } = simulateHundred();
+            currentTosses = results.slice();
+            renderAllCoins(currentTosses);
+            // 将本次正面次数加入历史记录（横排增加一列）
+            addRecord(headsCount);
+        }
+        
+        // 初始化页面：自动第一次模拟，同时清空旧历史再记录首次（确保干净开始）
+        function initialize() {
+            // 生成初次数据
+            const { results, headsCount } = simulateHundred();
+            currentTosses = results.slice();
+            renderAllCoins(currentTosses);
+            // 清空历史再记录第一次
+            clearHistory();
+            addRecord(headsCount);
+        }
+        
+        // 绑定事件
+        if (simulateBtn) {
+            simulateBtn.addEventListener('click', () => {
+                runNewSimulationAndRecord();
+                simulateBtn.style.transform = 'scale(0.97)';
+                setTimeout(() => { simulateBtn.style.transform = ''; }, 130);
+            });
+        }
+        
+        if (clearHistoryBtn) {
+            clearHistoryBtn.addEventListener('click', () => {
+                clearHistory();
+            });
+        }
+        
+        initialize();
+        
+        console.log('💰 硬币模拟器 + 横排历史记录（大字体表格） | 硬币图片: ybz.png / ybf.png | 按钮置于表格右侧');
+    })();
+</script>
+</body>
+</html>
