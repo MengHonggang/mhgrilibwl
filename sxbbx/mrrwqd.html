@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>每日工作清单 · 教师助手</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent; /* 去掉移动端点击灰底 */
+        }
+
+        body {
+            background: #f4f7fc;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, sans-serif;
+            padding: 16px 14px 40px;
+            color: #1e2a3e;
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* 头部 */
+        .header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1f3a5f, #2b4c7c);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.2px;
+        }
+        .date-badge {
+            background: #e9edf2;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #1f3a5f;
+        }
+
+        /* 卡片通用样式 */
+        .card {
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03), 0 2px 6px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            margin-bottom: 24px;
+            transition: all 0.2s;
+        }
+
+        /* 开关区域（编制试卷） */
+        .paper-toggle {
+            background: #f0f4f9;
+            border-radius: 60px;
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .toggle-label input {
+            width: 26px;
+            height: 26px;
+            cursor: pointer;
+            margin: 0;
+            accent-color: #2c6e9e;
+        }
+        .paper-hint {
+            font-size: 0.7rem;
+            color: #4a627a;
+            background: #ffffffb3;
+            padding: 4px 12px;
+            border-radius: 40px;
+        }
+
+        /* 提醒条 */
+        .reminder-banner {
+            background: #fff0e0;
+            border-radius: 60px;
+            padding: 12px 18px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-left: 4px solid #f39c12;
+            font-weight: 500;
+        }
+        .reminder-btn {
+            background: #f39c12;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .reminder-btn:active {
+            background: #e67e22;
+            transform: scale(0.97);
+        }
+
+        /* 任务列表 - 移动优先大按钮 */
+        .task-item {
+            background: #ffffff;
+            border: 1px solid #e2edf2;
+            border-radius: 28px;
+            padding: 12px 18px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            transition: all 0.15s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .task-info {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            flex: 2;
+        }
+        .task-name {
+            font-weight: 650;
+            font-size: 1.05rem;
+            letter-spacing: -0.2px;
+            background: #f8fafc;
+            padding: 4px 8px;
+            border-radius: 24px;
+        }
+        .task-time {
+            background: #eef3fc;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #2c5a7a;
+        }
+        /* 复选框 - 加大触摸区域 */
+        .complete-check {
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            accent-color: #2c6e9e;
+            transform: scale(1);
+            margin: 0;
+            flex-shrink: 0;
+        }
+        /* 无任务时提示 */
+        .empty-tip {
+            background: #fef7e0;
+            border-radius: 32px;
+            padding: 28px 16px;
+            text-align: center;
+            color: #b85c00;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        /* 重置按钮 */
+        .btn-reset {
+            background: #eef2fa;
+            border: none;
+            padding: 14px 18px;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1f4970;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+            transition: 0.2s;
+        }
+        .btn-reset:active {
+            background: #e0e8f2;
+            transform: scale(0.98);
+        }
+
+        /* 历史面板 - 移动适配 */
+        .history-card {
+            background: white;
+            border-radius: 32px;
+            padding: 1.3rem;
+        }
+        .history-title {
+            font-size: 1.35rem;
+            font-weight: 650;
+            margin-bottom: 18px;
+            border-left: 5px solid #2c6e9e;
+            padding-left: 14px;
+        }
+        .history-list {
+            max-height: 480px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-right: 4px;
+        }
+        .history-day {
+            background: #fafcff;
+            border-radius: 24px;
+            padding: 14px;
+            margin-bottom: 14px;
+            border: 1px solid #e9eef3;
+        }
+        .history-date {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #1f3a5f;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #cddfe7;
+            padding-bottom: 6px;
+        }
+        .history-tasks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .history-tag {
+            background: #eaf3ff;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #1f5680;
+        }
+        .history-empty {
+            text-align: center;
+            color: #8ba0b5;
+            padding: 32px 12px;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #7c8fa3;
+            margin-top: 24px;
+            padding-top: 10px;
+        }
+
+        /* 针对极小屏优化 */
+        @media (max-width: 550px) {
+            body {
+                padding: 12px 12px 30px;
+            }
+            .card {
+                padding: 1.2rem;
+            }
+            .task-name {
+                font-size: 0.95rem;
+            }
+            .task-time {
+                font-size: 0.7rem;
+                padding: 4px 12px;
+            }
+            .complete-check {
+                width: 36px;
+                height: 36px;
+            }
+            .reminder-btn {
+                padding: 8px 14px;
+                font-size: 0.8rem;
+            }
+            .history-title {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* 触摸友好效果 */
+        button, .reminder-btn, .btn-reset, .toggle-label {
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        /* 滚动条美观 */
+        .history-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .history-list::-webkit-scrollbar-track {
+            background: #eef2f9;
+            border-radius: 10px;
+        }
+        .history-list::-webkit-scrollbar-thumb {
+            background: #bdd4e8;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📋 每日工作清单</h1>
+        <div class="date-badge" id="currentDateDisplay"></div>
+    </div>
+
+    <!-- 主要待办卡片 -->
+    <div class="card">
+        <div class="paper-toggle">
+            <label class="toggle-label">
+                <input type="checkbox" id="togglePaperTask"> 📄 编制试卷（按需）
+            </label>
+            <span class="paper-hint">✓ 勾选后任务才会出现</span>
+        </div>
+
+        <div id="reminderArea" class="reminder-banner" style="display: none;">
+            <span>⏰ 晚间提醒 · 点击查看未完成</span>
+            <button id="manualReminderBtn" class="reminder-btn">查看未完成</button>
+        </div>
+
+        <div id="taskListContainer">
+            <!-- 动态渲染今日未完成任务 -->
+            <div style="text-align:center; padding: 18px;">加载任务中...</div>
+        </div>
+
+        <button id="resetTodayBtn" class="btn-reset">⟳ 重置今日所有任务</button>
+        <p style="font-size:0.7rem; color:#6c819a; margin-top: 16px; text-align:center;">
+            ✅ 勾选 → 任务立即消失并记入历史<br>
+            📅 18:00自动提醒未完成事项
+        </p>
+    </div>
+
+    <!-- 历史记录栏 -->
+    <div class="history-card">
+        <div class="history-title">📆 最近30天完成记录</div>
+        <div id="historyListArea" class="history-list">
+            <div class="history-empty">加载历史中...</div>
+        </div>
+    </div>
+    <footer>数据保存在浏览器中 · 自动保留30天</footer>
+</div>
+
+<script>
+    // ---------- 固定任务数据 ----------
+    const BASE_TASKS = [
+        { name: "备课", timeLabel: "约1小时" },
+        { name: "批改作业", timeLabel: "约1小时" },
+        { name: "写教学笔记", timeLabel: "最多1小时" },
+        { name: "填写工作日记和生活日记表", timeLabel: "≤15分钟" },
+        { name: "发一条抖音", timeLabel: "≤15分钟" },
+        { name: "写观察日记", timeLabel: "0.5-1小时" }
+    ];
+    const EXTRA_TASK = { name: "编制试卷", timeLabel: "约1小时 (按需)" };
+
+    const STORAGE_KEY = "DailyWorkRecords_v2";
+    const LAST_REMIND_DATE_KEY = "LastReminderDate_v2";
+
+    // 工具函数
+    function getTodayStr() {
+        const today = new Date();
+        return today.toISOString().slice(0,10);
+    }
+
+    function loadAllRecords() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return {};
+        try {
+            return JSON.parse(raw);
+        } catch(e) { return {}; }
+    }
+
+    function saveAllRecords(records) {
+        const today = getTodayStr();
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 30);
+        const cutoffStr = cutoffDate.toISOString().slice(0,10);
+        const filtered = {};
+        for(let date in records) {
+            if(date >= cutoffStr) filtered[date] = records[date];
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+        return filtered;
+    }
+
+    function getOrCreateDayRecord(dateStr, defaultShowPaper = false) {
+        const records = loadAllRecords();
+        if(!records[dateStr]) {
+            const tasksCompleted = {};
+            BASE_TASKS.forEach(t => { tasksCompleted[t.name] = false; });
+            records[dateStr] = {
+                tasksCompleted: tasksCompleted,
+                showPaper: defaultShowPaper,
+            };
+            saveAllRecords(records);
+        }
+        let rec = records[dateStr];
+        let needUpdate = false;
+        BASE_TASKS.forEach(t => {
+            if(rec.tasksCompleted[t.name] === undefined) {
+                rec.tasksCompleted[t.name] = false;
+                needUpdate = true;
+            }
+        });
+        if(rec.showPaper === undefined) {
+            rec.showPaper = defaultShowPaper;
+            needUpdate = true;
+        }
+        if(rec.showPaper && rec.tasksCompleted[EXTRA_TASK.name] === undefined) {
+            rec.tasksCompleted[EXTRA_TASK.name] = false;
+            needUpdate = true;
+        }
+        if(needUpdate) saveAllRecords(records);
+        return records[dateStr];
+    }
+
+    function updateTaskCompletion(dateStr, taskName, isCompleted) {
+        const records = loadAllRecords();
+        if(!records[dateStr]) getOrCreateDayRecord(dateStr, false);
+        records[dateStr].tasksCompleted[taskName] = isCompleted;
+        saveAllRecords(records);
+    }
+
+    function updateShowPaper(dateStr, showPaper) {
+        const records = loadAllRecords();
+        if(!records[dateStr]) {
+            getOrCreateDayRecord(dateStr, showPaper);
+        } else {
+            records[dateStr].showPaper = showPaper;
+            if(showPaper && records[dateStr].tasksCompleted[EXTRA_TASK.name] === undefined) {
+                records[dateStr].tasksCompleted[EXTRA_TASK.name] = false;
+            }
+            saveAllRecords(records);
+        }
+    }
+
+    function resetTodayTasks() {
+        const today = getTodayStr();
+        const records = loadAllRecords();
+        if(!records[today]) getOrCreateDayRecord(today, false);
+        const dayRec = records[today];
+        BASE_TASKS.forEach(t => { dayRec.tasksCompleted[t.name] = false; });
+        if(dayRec.tasksCompleted[EXTRA_TASK.name] !== undefined) {
+            dayRec.tasksCompleted[EXTRA_TASK.name] = false;
+        }
+        saveAllRecords(records);
+        renderTodayTasks();
+        renderHistoryPanel();
+    }
+
+    function getTodayVisibleTasks(todayStr, dayRecord) {
+        const showPaper = dayRecord.showPaper || false;
+        const visibleTasks = [...BASE_TASKS];
+        if(showPaper) visibleTasks.push({ ...EXTRA_TASK });
+        return visibleTasks;
+    }
+
+    // 渲染今日任务（完成即消失）
+    function renderTodayTasks() {
+        const today = getTodayStr();
+        let dayRecord = getOrCreateDayRecord(today, false);
+        const showPaperFromStore = dayRecord.showPaper || false;
+        const toggleCb = document.getElementById('togglePaperTask');
+        if(toggleCb && toggleCb.checked !== showPaperFromStore) {
+            toggleCb.checked = showPaperFromStore;
+        }
+
+        const visibleTasks = getTodayVisibleTasks(today, dayRecord);
+        const completedMap = dayRecord.tasksCompleted || {};
+        const unfinishedTasks = visibleTasks.filter(task => !completedMap[task.name]);
+
+        const container = document.getElementById('taskListContainer');
+        if(!container) return;
+
+        if(unfinishedTasks.length === 0) {
+            container.innerHTML = `<div class="empty-tip">🎉 太棒啦！今日所有工作都已完成，给自己点赞~</div>`;
+            return;
+        }
+
+        let html = `<div style="margin-bottom: 12px; font-size:0.85rem; font-weight:500; padding-left: 6px;">📌 未完成项 · ${unfinishedTasks.length}项</div>`;
+        unfinishedTasks.forEach(task => {
+            html += `
+                <div class="task-item" data-task-name="${escapeHtml(task.name)}">
+                    <div class="task-info">
+                        <span class="task-name">📖 ${escapeHtml(task.name)}</span>
+                        <span class="task-time">⏱️ ${escapeHtml(task.timeLabel)}</span>
+                    </div>
+                    <input type="checkbox" class="complete-check" data-task="${escapeHtml(task.name)}" title="完成即消失">
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+
+        // 绑定勾选事件
+        document.querySelectorAll('.complete-check').forEach(checkbox => {
+            checkbox.addEventListener('change', function(e) {
+                const taskName = this.getAttribute('data-task');
+                if(this.checked) {
+                    updateTaskCompletion(today, taskName, true);
+                    renderTodayTasks();
+                    renderHistoryPanel();
+                }
+                e.stopPropagation();
+            });
+        });
+    }
+
+    function escapeHtml(str) {
+        if(!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if(m === '&') return '&amp;';
+            if(m === '<') return '&lt;';
+            if(m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // 历史面板
+    function renderHistoryPanel() {
+        const records = loadAllRecords();
+        const today = getTodayStr();
+        const dateList = Object.keys(records).sort().reverse();
+        const container = document.getElementById('historyListArea');
+        if(!container) return;
+        if(dateList.length === 0) {
+            container.innerHTML = `<div class="history-empty">暂无历史记录，开始完成任务吧~</div>`;
+            return;
+        }
+
+        let html = '';
+        let count = 0;
+        for(let date of dateList) {
+            if(count >= 30) break;
+            const rec = records[date];
+            if(!rec || !rec.tasksCompleted) continue;
+            const completedNames = Object.keys(rec.tasksCompleted).filter(tname => rec.tasksCompleted[tname] === true);
+            const isToday = (date === today);
+            const dateDisplay = isToday ? `${date} (今天)` : date;
+            html += `<div class="history-day">
+                        <div class="history-date">
+                            <span>📅 ${escapeHtml(dateDisplay)}</span>
+                            <span>✅ ${completedNames.length}项完成</span>
+                        </div>`;
+            if(completedNames.length > 0) {
+                html += `<div class="history-tasks">`;
+                completedNames.forEach(t => {
+                    html += `<span class="history-tag">✔️ ${escapeHtml(t)}</span>`;
+                });
+                html += `</div>`;
+            } else {
+                html += `<div class="history-tasks" style="color:#9aaebf;">暂无完成任务记录</div>`;
+            }
+            html += `</div>`;
+            count++;
+        }
+        if(count === 0) container.innerHTML = `<div class="history-empty">暂无有效历史</div>`;
+        else container.innerHTML = html;
+    }
+
+    // 提醒逻辑
+    let reminderTriggeredToday = false;
+
+    function showUnfinishedDetails() {
+        const today = getTodayStr();
+        const dayRecord = getOrCreateDayRecord(today, false);
+        const visibleTasks = getTodayVisibleTasks(today, dayRecord);
+        const completedMap = dayRecord.tasksCompleted || {};
+        const unfinished = visibleTasks.filter(t => !completedMap[t.name]);
+        if(unfinished.length > 0) {
+            let msg = "📌 未完成工作清单:\n";
+            unfinished.forEach(t => msg += `• ${t.name} (${t.timeLabel})\n`);
+            alert(msg);
+        } else {
+            alert("🎉 恭喜！今日所有任务已完成，完美收工！");
+        }
+    }
+
+    function checkEveningReminder() {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const todayStr = getTodayStr();
+        const lastRemind = localStorage.getItem(LAST_REMIND_DATE_KEY);
+        if(lastRemind === todayStr) {
+            reminderTriggeredToday = true;
+            return;
+        }
+        if(currentHour >= 18) {
+            if(!reminderTriggeredToday) {
+                const dayRecord = getOrCreateDayRecord(todayStr, false);
+                const visibleTasks = getTodayVisibleTasks(todayStr, dayRecord);
+                const completedMap = dayRecord.tasksCompleted || {};
+                const unfinished = visibleTasks.filter(t => !completedMap[t.name]);
+                if(unfinished.length > 0) {
+                    const taskNames = unfinished.map(t => t.name).join('、');
+                    const message = `【晚间提醒】傍晚6点啦，今日还有 ${unfinished.length} 项未完成：\n${taskNames}`;
+                    if (Notification.permission === "granted") {
+                        new Notification("📋 工作清单提醒", { body: message, icon: "✅" });
+                    } else if (Notification.permission !== "denied") {
+                        Notification.requestPermission().then(perm => {
+                            if(perm === "granted") new Notification("📋 工作清单提醒", { body: message });
+                            else alert(message);
+                        });
+                    } else {
+                        alert(message);
+                    }
+                    // 页面内提醒区域显示
+                    const reminderArea = document.getElementById('reminderArea');
+                    if(reminderArea) {
+                        reminderArea.style.display = "flex";
+                        reminderArea.innerHTML = `<span>⚠️ 18:00提醒: 剩余未完成 ${unfinished.length} 项</span>
+                                                  <button id="manualReminderBtn" class="reminder-btn">查看详情</button>`;
+                        const newBtn = document.getElementById('manualReminderBtn');
+                        if(newBtn) newBtn.onclick = () => showUnfinishedDetails();
+                    }
+                } else {
+                    if(Notification.permission === "granted") {
+                        new Notification("🎉 完美收工", { body: "今日所有工作已完成，好好休息！" });
+                    }
+                }
+                localStorage.setItem(LAST_REMIND_DATE_KEY, todayStr);
+                reminderTriggeredToday = true;
+            }
+        } else {
+            if(lastRemind !== todayStr) reminderTriggeredToday = false;
+        }
+    }
+
+    // 绑定事件
+    function bindPaperToggle() {
+        const toggle = document.getElementById('togglePaperTask');
+        if(toggle) {
+            toggle.addEventListener('change', function(e) {
+                const isChecked = e.target.checked;
+                const today = getTodayStr();
+                updateShowPaper(today, isChecked);
+                renderTodayTasks();
+                renderHistoryPanel();
+            });
+        }
+    }
+
+    function bindReset() {
+        const resetBtn = document.getElementById('resetTodayBtn');
+        if(resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if(confirm("⚠️ 重置今日所有任务后，已完成记录将清空，确定重置吗？")) {
+                    resetTodayTasks();
+                }
+            });
+        }
+    }
+
+    function bindManualReminder() {
+        let btn = document.getElementById('manualReminderBtn');
+        if(btn) {
+            btn.onclick = () => showUnfinishedDetails();
+        } else {
+            // 动态监听
+            const checkExist = setInterval(() => {
+                const newBtn = document.getElementById('manualReminderBtn');
+                if(newBtn) {
+                    newBtn.onclick = () => showUnfinishedDetails();
+                    clearInterval(checkExist);
+                }
+            }, 500);
+        }
+    }
+
+    function startReminderScheduler() {
+        checkEveningReminder();
+        setInterval(() => {
+            checkEveningReminder();
+        }, 60000);
+    }
+
+    function requestNotificationPerm() {
+        if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+    }
+
+    function updateDateDisplay() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2,'0');
+        const dd = String(today.getDate()).padStart(2,'0');
+        const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
+        const weekday = weekdays[today.getDay()];
+        const el = document.getElementById('currentDateDisplay');
+        if(el) el.innerHTML = `${yyyy}.${mm}.${dd} ${weekday}`;
+    }
+
+    function init() {
+        updateDateDisplay();
+        requestNotificationPerm();
+        const today = getTodayStr();
+        getOrCreateDayRecord(today, false);
+        renderTodayTasks();
+        renderHistoryPanel();
+        bindPaperToggle();
+        bindReset();
+        startReminderScheduler();
+        bindManualReminder();
+
+        // 跨日刷新
+        let lastDate = today;
+        setInterval(() => {
+            const newToday = getTodayStr();
+            if(newToday !== lastDate) {
+                location.reload();
+            } else {
+                renderTodayTasks();
+                renderHistoryPanel();
+            }
+            updateDateDisplay();
+        }, 30000);
+        // 保证提醒区域可见（初始如果没有提醒条，可以隐藏，但若昨天未清则会显示？默认隐藏，但有手动按钮重新绑定）
+        const reminderArea = document.getElementById('reminderArea');
+        if(reminderArea && reminderArea.style.display === 'none') {
+            // 如果之前没有触发提醒但用户想手动检查，展示提醒条但默认显示“手动检查”
+            reminderArea.style.display = "flex";
+            reminderArea.innerHTML = `<span>🔔 点击按钮查看今日未完成任务</span>
+                                      <button id="manualReminderBtn" class="reminder-btn">检查清单</button>`;
+            const newBtn = document.getElementById('manualReminderBtn');
+            if(newBtn) newBtn.onclick = () => showUnfinishedDetails();
+        }
+    }
+    init();
+</script>
+</body>
+</html>
