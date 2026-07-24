@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>电子黑板 · 中国孟</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #2E4A2E; }
+    
+    #boardCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+    
+    /* 工具栏 */
+    #toolbar {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(46, 74, 46, 0.35);
+      border-radius: 6px;
+      padding: 4px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      backdrop-filter: blur(2px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .toolbar-main {
+      display: flex;
+      align-items: center;
+    }
+    
+    #dragHandle {
+      font-size: 18px;
+      color: white;
+      cursor: grab;
+      padding: 0 4px;
+      margin-right: 2px;
+      user-select: none;
+      line-height: 1;
+    }
+    #dragHandle:active { cursor: grabbing; }
+    
+    .toolbar-btn {
+      width: 32px;
+      height: 32px;
+      margin: 0 1px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.85);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .toolbar-btn:hover { background: rgba(255,255,255,0.95); }
+    .toolbar-btn.active { background: #AAD; box-shadow: inset 0 0 4px rgba(0,0,0,0.3); }
+    .toolbar-btn.eraser-active { background: #FAA; }
+    
+    .style-panel {
+      background: rgba(46, 74, 46, 0.8);
+      border-radius: 4px;
+      margin-top: 4px;
+      padding: 6px 8px;
+      color: white;
+      font-size: 13px;
+      display: none;
+    }
+    .style-panel.visible { display: block; }
+    
+    .color-row, .width-row, .zoom-row {
+      display: flex;
+      align-items: center;
+      margin: 3px 0;
+      gap: 3px;
+    }
+    .color-row span, .width-row span, .zoom-row span {
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+    
+    .color-swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      cursor: pointer;
+      border: 1px solid #999;
+    }
+    .color-swatch:hover { border-color: white; }
+    
+    .width-btn {
+      min-width: 24px;
+      height: 24px;
+      font-size: 11px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid #888;
+      border-radius: 3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .width-btn.selected {
+      background: #AAD;
+      font-weight: bold;
+      border-color: white;
+    }
+    
+    .zoom-btn {
+      width: 28px;
+      height: 28px;
+      font-size: 16px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid #888;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .zoom-btn:hover { background: rgba(255,255,255,0.9); }
+    
+    #infoPopup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px 28px;
+      border-radius: 8px;
+      font-size: 18px;
+      text-align: center;
+      z-index: 200;
+      display: none;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="boardCanvas"></canvas>
+
+  <!-- 工具栏 -->
+  <div id="toolbar">
+    <div class="toolbar-main">
+      <div id="dragHandle" title="拖动移动工具栏">⋮⋮</div>
+      <button id="btnDraw" class="toolbar-btn active" title="书写模式">✏️</button>
+      <button id="btnPan" class="toolbar-btn" title="拖动/缩放模式">✋</button>
+      <button id="btnEraser" class="toolbar-btn" title="橡皮擦">🧹</button>
+      <button id="btnClear" class="toolbar-btn" title="清除画布">🗑️</button>
+      <button id="btnScreenshot" class="toolbar-btn" title="截图保存">📷</button>
+      <button id="btnInfo" class="toolbar-btn" title="作者信息">ℹ️</button>
+      <button id="btnExit" class="toolbar-btn" title="退出全屏">❌</button>
+    </div>
+    <!-- 书写面板 -->
+    <div id="drawPanel" class="style-panel">
+      <div class="color-row">
+        <span>颜色：</span>
+        <div class="color-swatch" style="background:white;" data-color="white"></div>
+        <div class="color-swatch" style="background:red;" data-color="red"></div>
+        <div class="color-swatch" style="background:#00cc00;" data-color="#00cc00"></div>
+        <div class="color-swatch" style="background:yellow;" data-color="yellow"></div>
+        <div class="color-swatch" style="background:blue;" data-color="blue"></div>
+        <div class="color-swatch" style="background:orange;" data-color="orange"></div>
+        <div class="color-swatch" style="background:purple;" data-color="purple"></div>
+        <div class="color-swatch" style="background:black;" data-color="black"></div>
+      </div>
+      <div class="width-row">
+        <span>粗细：</span>
+        <div id="widthContainer" style="display:flex; gap:2px; flex-wrap:wrap;"></div>
+      </div>
+    </div>
+    <!-- 拖动面板 -->
+    <div id="panPanel" class="style-panel">
+      <div class="zoom-row">
+        <span>缩放：</span>
+        <div id="btnZoomIn" class="zoom-btn" title="放大">＋</div>
+        <div id="btnZoomOut" class="zoom-btn" title="缩小">－</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 作者弹窗 -->
+  <div id="infoPopup">作者：中国孟<br>邮箱：bluejokul@hotmail.com</div>
+
+  <script>
+    (function() {
+      // ---------- DOM ----------
+      const canvas = document.getElementById('boardCanvas');
+      const ctx = canvas.getContext('2d');
+      const toolbar = document.getElementById('toolbar');
+      const dragHandle = document.getElementById('dragHandle');
+      const btnDraw = document.getElementById('btnDraw');
+      const btnPan = document.getElementById('btnPan');
+      const btnEraser = document.getElementById('btnEraser');
+      const btnClear = document.getElementById('btnClear');
+      const btnScreenshot = document.getElementById('btnScreenshot');
+      const btnInfo = document.getElementById('btnInfo');
+      const btnExit = document.getElementById('btnExit');
+      const drawPanel = document.getElementById('drawPanel');
+      const panPanel = document.getElementById('panPanel');
+      const widthContainer = document.getElementById('widthContainer');
+      const btnZoomIn = document.getElementById('btnZoomIn');
+      const btnZoomOut = document.getElementById('btnZoomOut');
+      const infoPopup = document.getElementById('infoPopup');
+
+      // ---------- 状态 ----------
+      let mode = 'draw';
+      let currentColor = 'white';
+      let penWidth = 4;
+      let eraserOn = false;
+      let eraserWidth = Math.round(penWidth * 2.5);
+      
+      // 画布变换（基于 CSS 像素）
+      let tx = 0, ty = 0, scale = 1;
+      
+      let drawing = false;
+      let lastX = 0, lastY = 0;
+      
+      let panning = false;
+      let panStartX = 0, panStartY = 0;
+      let panStartTX = 0, panStartTY = 0;
+      
+      let toolbarDragging = false;
+      let toolbarStartX = 0, toolbarStartY = 0;
+      let toolbarOrigLeft = 0, toolbarOrigTop = 0;
+
+      // ---------- 高 DPI 自适应 ----------
+      function setupCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);   // 替换所有变换，包括之前的 scale
+        ctx.imageSmoothingEnabled = true;          // 抗锯齿开启，高 DPI 下边缘更平滑
+        ctx.fillStyle = '#2E4A2E';
+        ctx.fillRect(0, 0, rect.width, rect.height);
+        // 重置画布平移/缩放
+        tx = 0; ty = 0; scale = 1;
+        updateCanvasTransform();
+      }
+
+      function updateCanvasTransform() {
+        canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+      }
+
+      // 屏幕坐标 → 画布逻辑坐标（考虑 translate/scale）
+      function screenToCanvas(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (clientX - rect.left - tx) / scale,
+          y: (clientY - rect.top - ty) / scale
+        };
+      }
+
+      // ---------- 颜色转换 ----------
+      function getRGB(color) {
+        const map = {
+          'white': '#FFFFFF', 'red': '#FF0000', '#00cc00': '#00CC00',
+          'green': '#00CC00', 'yellow': '#FFFF00', 'blue': '#0000FF',
+          'orange': '#FF8800', 'purple': '#8800CC', 'black': '#000000'
+        };
+        return map[color] || color;
+      }
+
+      // ---------- 抗锯齿绘制（使用 Canvas 默认抗锯齿，高 DPI 下极清晰）----------
+      function drawLine(x1, y1, x2, y2) {
+        const lineWidth = eraserOn ? eraserWidth : penWidth;
+        const color = eraserOn ? '#2E4A2E' : getRGB(currentColor);
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+
+      // ---------- 模式 / 面板 ----------
+      function setMode(newMode) {
+        mode = newMode;
+        if (mode === 'draw') {
+          btnDraw.classList.add('active');
+          btnPan.classList.remove('active');
+          canvas.style.cursor = 'crosshair';
+          showPanel('draw');
+        } else {
+          btnPan.classList.add('active');
+          btnDraw.classList.remove('active');
+          canvas.style.cursor = 'grab';
+          showPanel('pan');
+        }
+      }
+
+      function toggleDrawMode() {
+        if (mode !== 'draw') {
+          setMode('draw');
+        } else {
+          drawPanel.classList.contains('visible') ? hideAllPanels() : showPanel('draw');
+        }
+      }
+
+      function togglePanMode() {
+        if (mode !== 'pan') {
+          setMode('pan');
+        } else {
+          panPanel.classList.contains('visible') ? hideAllPanels() : showPanel('pan');
+        }
+      }
+
+      function hideAllPanels() {
+        drawPanel.classList.remove('visible');
+        panPanel.classList.remove('visible');
+      }
+
+      function showPanel(type) {
+        hideAllPanels();
+        if (type === 'draw') drawPanel.classList.add('visible');
+        else if (type === 'pan') panPanel.classList.add('visible');
+      }
+
+      // 初始：书写，隐藏面板
+      setMode('draw');
+      hideAllPanels();
+
+      // ---------- 颜色选择 ----------
+      document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.addEventListener('click', (e) => {
+          currentColor = e.target.dataset.color;
+          hideAllPanels();
+        });
+      });
+
+      // ---------- 粗细按钮 1~20 ----------
+      for (let i = 1; i <= 20; i++) {
+        const btn = document.createElement('div');
+        btn.className = 'width-btn';
+        btn.textContent = i;
+        btn.dataset.width = i;
+        btn.addEventListener('click', function() {
+          penWidth = parseInt(this.dataset.width);
+          eraserWidth = Math.round(penWidth * 2.5);
+          document.querySelectorAll('.width-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+        });
+        widthContainer.appendChild(btn);
+      }
+      // 默认选中 4
+      document.querySelector('.width-btn[data-width="4"]')?.classList.add('selected');
+
+      // ---------- 橡皮擦 ----------
+      function toggleEraser() {
+        eraserOn = !eraserOn;
+        btnEraser.classList.toggle('eraser-active', eraserOn);
+      }
+
+      // ---------- 清除画布 ----------
+      function clearCanvas() {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);      // 重置变换
+        ctx.fillStyle = '#2E4A2E';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+        // 重新应用 devicePixelRatio 变换
+        const dpr = window.devicePixelRatio || 1;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = '#2E4A2E';
+        ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      }
+
+      // ---------- 缩放 ----------
+      function zoomAtScreenPoint(clientX, clientY, factor) {
+        const newScale = scale * factor;
+        if (newScale < 0.1 || newScale > 10) return;
+        const { x, y } = screenToCanvas(clientX, clientY);
+        tx = clientX - x * newScale;
+        ty = clientY - y * newScale;
+        scale = newScale;
+        updateCanvasTransform();
+      }
+
+      function zoomIn() {
+        zoomAtScreenPoint(window.innerWidth / 2, window.innerHeight / 2, 1.1);
+      }
+
+      function zoomOut() {
+        zoomAtScreenPoint(window.innerWidth / 2, window.innerHeight / 2, 0.9);
+      }
+
+      // Ctrl + 滚轮缩放
+      window.addEventListener('wheel', (e) => {
+        if (mode === 'pan' && e.ctrlKey) {
+          e.preventDefault();
+          zoomAtScreenPoint(e.clientX, e.clientY, e.deltaY < 0 ? 1.1 : 0.9);
+        }
+      }, { passive: false });
+
+      window.addEventListener('wheel', (e) => {
+        if (e.ctrlKey) e.preventDefault();
+      }, { passive: false });
+
+      // ---------- 截图保存 ----------
+      function takeScreenshot() {
+        const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+        const filename = `blackboard_${timestamp}.png`;
+        // 截图直接使用 canvas 的物理像素，高 DPI 清晰
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          alert('截图已保存（浏览器下载）');
+        }, 'image/png');
+      }
+
+      // ---------- 全屏 ----------
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {
+            alert('无法自动全屏，请手动按 F11');
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      }
+
+      document.addEventListener('click', function autoFullscreen() {
+        document.removeEventListener('click', autoFullscreen);
+        document.documentElement.requestFullscreen().catch(() => {});
+      }, { once: true });
+
+      // ---------- 作者弹窗 ----------
+      function toggleInfoPopup() {
+        infoPopup.style.display = infoPopup.style.display === 'block' ? 'none' : 'block';
+      }
+      infoPopup.addEventListener('click', () => infoPopup.style.display = 'none');
+
+      // ---------- 工具栏拖动 ----------
+      dragHandle.addEventListener('mousedown', (e) => {
+        toolbarDragging = true;
+        toolbarStartX = e.clientX;
+        toolbarStartY = e.clientY;
+        const rect = toolbar.getBoundingClientRect();
+        toolbarOrigLeft = rect.left;
+        toolbarOrigTop = rect.top;
+        e.preventDefault();
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!toolbarDragging) return;
+        const dx = e.clientX - toolbarStartX;
+        const dy = e.clientY - toolbarStartY;
+        toolbar.style.left = (toolbarOrigLeft + dx) + 'px';
+        toolbar.style.top = (toolbarOrigTop + dy) + 'px';
+        toolbar.style.bottom = 'auto';
+      });
+
+      window.addEventListener('mouseup', () => { toolbarDragging = false; });
+
+      // ---------- 画布事件 ----------
+      canvas.addEventListener('mousedown', (e) => {
+        const { x, y } = screenToCanvas(e.clientX, e.clientY);
+        if (mode === 'draw') {
+          drawing = true;
+          lastX = x; lastY = y;
+          drawLine(x, y, x + 0.01, y);
+        } else if (mode === 'pan') {
+          panning = true;
+          panStartX = e.clientX;
+          panStartY = e.clientY;
+          panStartTX = tx;
+          panStartTY = ty;
+          canvas.style.cursor = 'grabbing';
+        }
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (mode === 'draw' && drawing) {
+          const { x, y } = screenToCanvas(e.clientX, e.clientY);
+          drawLine(lastX, lastY, x, y);
+          lastX = x; lastY = y;
+        } else if (mode === 'pan' && panning) {
+          tx = panStartTX + (e.clientX - panStartX);
+          ty = panStartTY + (e.clientY - panStartY);
+          updateCanvasTransform();
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        drawing = false;
+        if (panning) {
+          panning = false;
+          canvas.style.cursor = 'grab';
+        }
+      });
+
+      // ---------- 触摸事件 ----------
+      canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const { x, y } = screenToCanvas(touch.clientX, touch.clientY);
+        if (mode === 'draw') {
+          drawing = true;
+          lastX = x; lastY = y;
+        } else if (mode === 'pan') {
+          panning = true;
+          panStartX = touch.clientX;
+          panStartY = touch.clientY;
+          panStartTX = tx;
+          panStartTY = ty;
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        if (mode === 'draw' && drawing) {
+          const { x, y } = screenToCanvas(touch.clientX, touch.clientY);
+          drawLine(lastX, lastY, x, y);
+          lastX = x; lastY = y;
+        } else if (mode === 'pan' && panning) {
+          tx = panStartTX + (touch.clientX - panStartX);
+          ty = panStartTY + (touch.clientY - panStartY);
+          updateCanvasTransform();
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('touchend', () => {
+        drawing = false;
+        panning = false;
+        canvas.style.cursor = mode === 'pan' ? 'grab' : 'crosshair';
+      });
+
+      // ---------- 按钮绑定 ----------
+      btnDraw.addEventListener('click', toggleDrawMode);
+      btnPan.addEventListener('click', togglePanMode);
+      btnEraser.addEventListener('click', toggleEraser);
+      btnClear.addEventListener('click', clearCanvas);
+      btnScreenshot.addEventListener('click', takeScreenshot);
+      btnInfo.addEventListener('click', toggleInfoPopup);
+      btnExit.addEventListener('click', toggleFullscreen);
+      btnZoomIn.addEventListener('click', zoomIn);
+      btnZoomOut.addEventListener('click', zoomOut);
+
+      // ---------- 窗口大小变化 ----------
+      window.addEventListener('resize', () => {
+        // 保存当前内容（简单起见，目前清空画布，可扩展保存像素）
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        setupCanvas();
+        ctx.putImageData(imageData, 0, 0);
+        // 注意：putImageData 是物理像素，需要确保坐标匹配，这里简化：如果缩放变化，内容会丢失，但直接重置也可
+        // 为了稳定，直接清空并重新设置背景
+        clearCanvas();
+      });
+
+      // 键盘 Esc 退出全屏
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.fullscreenElement) {
+          document.exitFullscreen();
+        }
+      });
+
+      // 启动
+      setupCanvas();
+    })();
+  </script>
+</body>
+</html>
