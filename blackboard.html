@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>电子黑板 - 优化版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #013220; overflow: hidden; 
+            font-family: "Microsoft YaHei", sans-serif; 
+            transition: background 0.3s; touch-action: none;
+            width: 100vw; height: 100vh;
+        }
+        #displayCanvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; }
+        .toolbar {
+            position: fixed; bottom: 20px; left: 20px;
+            background: rgba(192,192,192,0.3); backdrop-filter: blur(2px);
+            border-radius: 8px; padding: 4px 6px; display: flex; align-items: center; gap: 4px;
+            z-index: 200; border: 1px solid rgba(255,255,255,0.2); user-select: none;
+        }
+        .toolbar-content { display: flex; align-items: center; gap: 4px; overflow: hidden; transition: all 0.3s; }
+        .toolbar-content.hidden { max-width: 0; opacity: 0; pointer-events: none; margin: 0; padding: 0; }
+        .toolbar-content.visible { max-width: 800px; opacity: 1; }
+        .grip { font-size: 20px; color: black; cursor: pointer; padding: 0 4px; flex-shrink: 0; }
+        .tool-btn {
+            width: 32px; height: 32px; font-size: 18px;
+            display: flex; align-items: center; justify-content: center;
+            background: #D3D3D3; border: 1px solid #888; border-radius: 5px;
+            cursor: pointer; box-shadow: 1px 1px 3px rgba(0,0,0,0.3); flex-shrink: 0;
+        }
+        .tool-btn.active { background: #A9A9A9; box-shadow: inset 1px 1px 4px rgba(0,0,0,0.5); }
+        .separator { width: 1px; height: 24px; background: #888; flex-shrink: 0; }
+        .panel {
+            position: fixed; background: rgba(192,192,192,0.4); backdrop-filter: blur(2px);
+            border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 6px; z-index: 199;
+            display: none;
+        }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; cursor: move; }
+        .panel-title { font-size: 12px; font-weight: bold; color: black; }
+        .close-btn { font-size: 16px; cursor: pointer; background: rgba(255,255,255,0.5); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+        .color-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; margin-bottom: 6px; }
+        .color-btn {
+            width: 36px; height: 24px; border-radius: 4px; border: 1px solid #555;
+            font-size: 11px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+        .color-btn.active { box-shadow: inset 1px 1px 4px rgba(0,0,0,0.6); }
+        .bg-color-btn {
+            width: 36px; height: 36px; border-radius: 4px; border: 1px solid #555;
+            font-size: 10px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+        .bg-color-btn.active { box-shadow: inset 1px 1px 4px rgba(0,0,0,0.6); }
+        .width-label { font-size: 12px; color: black; margin-bottom: 2px; }
+        .width-select { width: 100%; padding: 3px; border-radius: 4px; border: 1px solid #888; }
+        .eraser-grid { display: flex; flex-direction: column; gap: 4px; }
+        .eraser-btn {
+            width: 70px; height: 30px; background: #D3D3D3;
+            border: 1px solid #888; border-radius: 5px; font-weight: bold; cursor: pointer;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+        .eraser-btn.active { background: #A9A9A9; box-shadow: inset 1px 1px 4px rgba(0,0,0,0.6); }
+        .pan-indicator {
+            position: fixed; bottom: 80px; left: 20px;
+            background: rgba(192,192,192,0.4); backdrop-filter: blur(2px);
+            border-radius: 6px; padding: 4px 10px; font-size: 12px; color: black;
+            z-index: 200; display: none; font-family: "Microsoft YaHei";
+        }
+    </style>
+</head>
+<body>
+    <canvas id="displayCanvas"></canvas>
+    <div class="pan-indicator" id="panIndicator">↔ 拖动模式 | 滚轮缩放 | 左键/右键拖动平移 | 双指缩放</div>
+
+    <!-- 工具栏 -->
+    <div class="toolbar" id="toolbar">
+        <span class="grip" id="grip" title="展开/隐藏工具栏">⋮⋮</span>
+        <div class="toolbar-content hidden" id="toolbarContent">
+            <button class="tool-btn" id="btnWrite" title="书写">✎</button>
+            <button class="tool-btn" id="btnDrag" title="拖动/缩放/平移">✥</button>
+            <button class="tool-btn" id="btnEraser" title="橡皮擦">🧹</button>
+            <button class="tool-btn" id="btnBgColor" title="背景颜色">🎨</button>
+            <div class="separator"></div>
+            <button class="tool-btn" id="btnUndo" title="撤销">↩</button>
+            <button class="tool-btn" id="btnRedo" title="重做">↪</button>
+            <div class="separator"></div>
+            <button class="tool-btn" id="btnSave" title="保存板书">💾</button>
+            <button class="tool-btn" id="btnLoad" title="加载板书">📂</button>
+            <button class="tool-btn" id="btnExport" title="导出图片">📸</button>
+            <div class="separator"></div>
+            <button class="tool-btn" id="btnFullscreen" title="全屏">⛶</button>
+            <button class="tool-btn" id="btnClear" title="清屏">🗑</button>
+            <button class="tool-btn" id="btnExit" title="退出全屏">✕</button>
+        </div>
+    </div>
+
+    <!-- 调色板 -->
+    <div class="panel" id="palettePanel">
+        <div class="panel-header" id="paletteHeader">
+            <span class="panel-title">⋮⋮ 拖动色盘</span>
+            <span class="close-btn" id="closePalette">✕</span>
+        </div>
+        <div class="color-grid" id="colorGrid">
+            <button class="color-btn active" data-color="#FFFFFF" style="background:#FFF;color:black;">白</button>
+            <button class="color-btn" data-color="#FF0000" style="background:#F00;">红</button>
+            <button class="color-btn" data-color="#00FF00" style="background:#0F0;color:black;">绿</button>
+            <button class="color-btn" data-color="#FFFF00" style="background:#FF0;color:black;">黄</button>
+            <button class="color-btn" data-color="#0000FF" style="background:#00F;">蓝</button>
+            <button class="color-btn" data-color="#FFA500" style="background:#FFA500;">橙</button>
+            <button class="color-btn" data-color="#800080" style="background:#800080;">紫</button>
+            <button class="color-btn" data-color="#000000" style="background:#000;">黑</button>
+        </div>
+        <div class="width-label">粗细</div>
+        <select class="width-select" id="widthSelect"></select>
+    </div>
+
+    <!-- 背景颜色面板 -->
+    <div class="panel" id="bgColorPanel">
+        <div class="panel-header" id="bgColorHeader">
+            <span class="panel-title">⋮⋮ 拖动</span>
+            <span class="close-btn" id="closeBgColor">✕</span>
+        </div>
+        <div class="color-grid">
+            <button class="bg-color-btn" data-bg="#000000" style="background:#000;color:white;">纯黑</button>
+            <button class="bg-color-btn" data-bg="#FFFFFF" style="background:#FFF;color:black;">纯白</button>
+            <button class="bg-color-btn active" data-bg="#013220" style="background:#013220;color:white;">墨绿</button>
+            <button class="bg-color-btn" data-bg="#001a10" style="background:#001a10;color:white;">极墨绿</button>
+        </div>
+    </div>
+
+    <!-- 橡皮擦面板 -->
+    <div class="panel" id="eraserPanel">
+        <div class="panel-header" id="eraserHeader">
+            <span class="panel-title">⋮⋮ 拖动</span>
+            <span class="close-btn" id="closeEraser">✕</span>
+        </div>
+        <div class="eraser-grid" id="eraserGrid">
+            <button class="eraser-btn" data-size="25">25</button>
+            <button class="eraser-btn" data-size="50">50</button>
+            <button class="eraser-btn active" data-size="100">100</button>
+            <button class="eraser-btn" data-size="200">200</button>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".json" style="display: none;">
+
+    <script>
+        (function() {
+            // ===== 性能优化 1：离屏 Canvas 双层缓存 =====
+            const displayCanvas = document.getElementById('displayCanvas');
+            const displayCtx = displayCanvas.getContext('2d');
+            
+            // 背景层：存储已完成的笔画
+            const bgCanvas = document.createElement('canvas');
+            const bgCtx = bgCanvas.getContext('2d');
+            
+            // 临时层：存储当前正在绘制的笔画
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+
+            const dpr = Math.min(window.devicePixelRatio || 1, 2); // 限制最大 2x 以提升性能
+            let W, H;
+
+            let mode = 'write';
+            let penColor = '#FFFFFF';
+            let penWidth = 4;
+            let eraserWidth = 100;
+            let scale = 1.0;
+            let offsetX = 0, offsetY = 0;
+            let drawing = false;
+            let strokes = [];
+            let currentStroke = null;
+            let bgColor = '#013220';
+
+            // ===== 撤销/重做 =====
+            let undoStack = [];
+            let redoStack = [];
+            const MAX_UNDO = 50;
+
+            // 拖动状态
+            let dragAction = null;
+            let panStartX, panStartY, panStartOffsetX, panStartOffsetY;
+            let isRightDragging = false;
+
+            // 双指缩放
+            let touchMode = null;
+            let initialPinchDistance = null;
+            let initialScale = 1.0;
+            let initialPinchOffsetX = 0, initialPinchOffsetY = 0;
+
+            // ===== 性能优化 2：requestAnimationFrame 节流 =====
+            let rafId = null;
+
+            // ===== 性能优化 3：预测 & 速度感知 =====
+            let lastPointTime = 0;
+            let prevWorldX = null, prevWorldY = null;
+            let predictedX = null, predictedY = null;
+
+            let paletteVisible = false;
+            let eraserPanelVisible = false;
+            let bgColorPanelVisible = false;
+            let toolbarExpanded = false;
+            let autoHideTimer = null;
+
+            let draggingToolbar = false, dragStartX, dragStartY, toolbarStartX, toolbarStartY;
+            let draggingPanel = null, panelMouseStartX, panelMouseStartY;
+
+            // DOM 元素
+            const toolbar = document.getElementById('toolbar');
+            const grip = document.getElementById('grip');
+            const toolbarContent = document.getElementById('toolbarContent');
+            const btnWrite = document.getElementById('btnWrite');
+            const btnDrag = document.getElementById('btnDrag');
+            const btnEraser = document.getElementById('btnEraser');
+            const btnBgColor = document.getElementById('btnBgColor');
+            const btnUndo = document.getElementById('btnUndo');
+            const btnRedo = document.getElementById('btnRedo');
+            const btnSave = document.getElementById('btnSave');
+            const btnLoad = document.getElementById('btnLoad');
+            const btnExport = document.getElementById('btnExport');
+            const btnFullscreen = document.getElementById('btnFullscreen');
+            const btnClear = document.getElementById('btnClear');
+            const btnExit = document.getElementById('btnExit');
+            const fileInput = document.getElementById('fileInput');
+            const panIndicator = document.getElementById('panIndicator');
+
+            const palettePanel = document.getElementById('palettePanel');
+            const paletteHeader = document.getElementById('paletteHeader');
+            const closePalette = document.getElementById('closePalette');
+            const colorGrid = document.getElementById('colorGrid');
+            const widthSelect = document.getElementById('widthSelect');
+
+            const bgColorPanel = document.getElementById('bgColorPanel');
+            const bgColorHeader = document.getElementById('bgColorHeader');
+            const closeBgColor = document.getElementById('closeBgColor');
+
+            const eraserPanel = document.getElementById('eraserPanel');
+            const eraserHeader = document.getElementById('eraserHeader');
+            const closeEraser = document.getElementById('closeEraser');
+            const eraserGrid = document.getElementById('eraserGrid');
+
+            // 初始化
+            for (let i = 1; i <= 20; i++) {
+                const opt = document.createElement('option');
+                opt.value = i; opt.textContent = i;
+                if (i === penWidth) opt.selected = true;
+                widthSelect.appendChild(opt);
+            }
+            widthSelect.addEventListener('change', () => penWidth = parseInt(widthSelect.value));
+
+            // ===== 画布初始化 =====
+            function resizeCanvas() {
+                W = window.innerWidth;
+                H = window.innerHeight;
+                
+                [displayCanvas, bgCanvas, tempCanvas].forEach(c => {
+                    c.width = W * dpr;
+                    c.height = H * dpr;
+                    c.style.width = W + 'px';
+                    c.style.height = H + 'px';
+                });
+                
+                // 背景层变换
+                bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                
+                commitStrokesToBackground();
+                renderToDisplay();
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // ===== 坐标转换 =====
+            function screenToWorld(sx, sy) {
+                const cx = W / 2, cy = H / 2;
+                return {
+                    x: (sx - cx) / scale + cx - offsetX,
+                    y: (sy - cy) / scale + cy - offsetY
+                };
+            }
+
+            function getCanvasPos(e) {
+                const rect = displayCanvas.getBoundingClientRect();
+                return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            }
+
+            function applyWorldTransform(ctx) {
+                const cx = W / 2, cy = H / 2;
+                ctx.setTransform(
+                    dpr * scale, 0, 0, dpr * scale,
+                    dpr * (cx * (1 - scale) + offsetX * scale),
+                    dpr * (cy * (1 - scale) + offsetY * scale)
+                );
+            }
+
+            // ===== 核心渲染：将笔画绘制到背景层 =====
+            function commitStrokesToBackground() {
+                bgCtx.clearRect(0, 0, W, H);
+                bgCtx.fillStyle = bgColor;
+                bgCtx.fillRect(0, 0, W, H);
+                
+                bgCtx.save();
+                applyWorldTransform(bgCtx);
+                
+                strokes.forEach(stroke => {
+                    if (stroke.points.length < 2) return;
+                    bgCtx.beginPath();
+                    bgCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                    
+                    if (stroke.points.length === 2) {
+                        bgCtx.lineTo(stroke.points[1].x, stroke.points[1].y);
+                    } else {
+                        for (let i = 1; i < stroke.points.length - 1; i++) {
+                            const midX = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
+                            const midY = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
+                            bgCtx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, midX, midY);
+                        }
+                        const last = stroke.points[stroke.points.length - 1];
+                        bgCtx.lineTo(last.x, last.y);
+                    }
+                    
+                    bgCtx.strokeStyle = stroke.color;
+                    bgCtx.lineWidth = stroke.width;
+                    bgCtx.lineCap = 'round';
+                    bgCtx.lineJoin = 'round';
+                    bgCtx.stroke();
+                });
+                
+                bgCtx.restore();
+            }
+
+            // ===== 合成到显示层 =====
+            function renderToDisplay(currentStrokePoints = null) {
+                displayCtx.clearRect(0, 0, W * dpr, H * dpr);
+                
+                // 绘制背景层
+                displayCtx.drawImage(bgCanvas, 0, 0);
+                
+                // 如果有当前笔画，绘制到临时层再合成
+                if (currentStrokePoints && currentStrokePoints.length >= 2) {
+                    tempCtx.clearRect(0, 0, W * dpr, H * dpr);
+                    tempCtx.save();
+                    applyWorldTransform(tempCtx);
+                    
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(currentStrokePoints[0].x, currentStrokePoints[0].y);
+                    
+                    if (currentStrokePoints.length === 2) {
+                        tempCtx.lineTo(currentStrokePoints[1].x, currentStrokePoints[1].y);
+                    } else {
+                        for (let i = 1; i < currentStrokePoints.length - 1; i++) {
+                            const midX = (currentStrokePoints[i].x + currentStrokePoints[i + 1].x) / 2;
+                            const midY = (currentStrokePoints[i].y + currentStrokePoints[i + 1].y) / 2;
+                            tempCtx.quadraticCurveTo(currentStrokePoints[i].x, currentStrokePoints[i].y, midX, midY);
+                        }
+                        const last = currentStrokePoints[currentStrokePoints.length - 1];
+                        tempCtx.lineTo(last.x, last.y);
+                    }
+                    
+                    tempCtx.strokeStyle = currentStroke.color;
+                    tempCtx.lineWidth = currentStroke.width;
+                    tempCtx.lineCap = 'round';
+                    tempCtx.lineJoin = 'round';
+                    tempCtx.stroke();
+                    
+                    tempCtx.restore();
+                    displayCtx.drawImage(tempCanvas, 0, 0);
+                }
+                
+                // 橡皮擦指示器
+                if (mode === 'erase' && lastMousePos) {
+                    displayCtx.save();
+                    displayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                    const r = eraserWidth / 2;
+                    displayCtx.beginPath();
+                    displayCtx.arc(lastMousePos.x, lastMousePos.y, r, 0, Math.PI * 2);
+                    displayCtx.fillStyle = 'rgba(128,128,128,0.3)';
+                    displayCtx.fill();
+                    displayCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+                    displayCtx.lineWidth = 1;
+                    displayCtx.stroke();
+                    displayCtx.restore();
+                }
+            }
+
+            let lastMousePos = null;
+
+            // ===== 撤销/重做 =====
+            function pushUndoState() {
+                undoStack.push(JSON.stringify(strokes));
+                if (undoStack.length > MAX_UNDO) undoStack.shift();
+                redoStack = [];
+            }
+
+            function undo() {
+                if (undoStack.length === 0) return;
+                redoStack.push(JSON.stringify(strokes));
+                strokes = JSON.parse(undoStack.pop());
+                drawing = false;
+                currentStroke = null;
+                commitStrokesToBackground();
+                renderToDisplay();
+            }
+
+            function redo() {
+                if (redoStack.length === 0) return;
+                undoStack.push(JSON.stringify(strokes));
+                strokes = JSON.parse(redoStack.pop());
+                commitStrokesToBackground();
+                renderToDisplay();
+            }
+
+            // ===== 压感 + 速度感知的笔锋效果 =====
+            function getDynamicWidth(worldX, worldY, pressure) {
+                // 基础宽度
+                let w = penWidth;
+                
+                // 压感调整（pressure 0-1，默认 0.5）
+                const p = pressure || 0.5;
+                w *= (0.3 + p * 0.7);
+                
+                // 速度调整（快速移动时变细）
+                if (prevWorldX !== null && prevWorldY !== null) {
+                    const now = Date.now();
+                    const dt = Math.max(now - lastPointTime, 1);
+                    const dist = Math.hypot(worldX - prevWorldX, worldY - prevWorldY);
+                    const speed = dist / dt;
+                    w *= Math.max(0.4, 1 - speed * 0.008);
+                }
+                
+                return Math.max(0.5, Math.min(w, penWidth * 1.5));
+            }
+
+            // ===== 预测平滑 =====
+            function predictNextPoint(x, y) {
+                if (prevWorldX === null || prevWorldY === null) {
+                    return { x, y };
+                }
+                const alpha = 0.4;
+                return {
+                    x: x + (x - prevWorldX) * alpha,
+                    y: y + (y - prevWorldY) * alpha
+                };
+            }
+
+            // ===== 鼠标事件 =====
+            displayCanvas.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                
+                if (e.pointerType === 'pen') {
+                    e.target.setPointerCapture(e.pointerId);
+                }
+                
+                if (e.button === 2) {
+                    if (mode === 'drag') {
+                        isRightDragging = true;
+                        panStartX = e.clientX; panStartY = e.clientY;
+                        panStartOffsetX = offsetX; panStartOffsetY = offsetY;
+                        displayCanvas.style.cursor = 'grabbing';
+                    }
+                    return;
+                }
+
+                if (mode === 'drag') {
+                    dragAction = 'pan';
+                    panStartX = e.clientX; panStartY = e.clientY;
+                    panStartOffsetX = offsetX; panStartOffsetY = offsetY;
+                    displayCanvas.style.cursor = 'grabbing';
+                    return;
+                }
+
+                drawing = true;
+                pushUndoState();
+                
+                const screenPos = getCanvasPos(e);
+                const worldPos = screenToWorld(screenPos.x, screenPos.y);
+                
+                lastPointTime = Date.now();
+                prevWorldX = worldPos.x;
+                prevWorldY = worldPos.y;
+                
+                const dynamicWidth = getDynamicWidth(worldPos.x, worldPos.y, e.pressure);
+                
+                currentStroke = {
+                    color: mode === 'write' ? penColor : bgColor,
+                    width: mode === 'write' ? dynamicWidth : eraserWidth,
+                    points: [{ x: worldPos.x, y: worldPos.y }]
+                };
+                strokes.push(currentStroke);
+            });
+
+            displayCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            window.addEventListener('pointermove', (e) => {
+                const screenPos = getCanvasPos(e);
+                lastMousePos = screenPos;
+
+                if (isRightDragging) {
+                    const dx = e.clientX - panStartX, dy = e.clientY - panStartY;
+                    offsetX = panStartOffsetX + dx / scale;
+                    offsetY = panStartOffsetY + dy / scale;
+                    commitStrokesToBackground();
+                    renderToDisplay();
+                    return;
+                }
+
+                if (dragAction === 'pan') {
+                    const dx = e.clientX - panStartX, dy = e.clientY - panStartY;
+                    offsetX = panStartOffsetX + dx / scale;
+                    offsetY = panStartOffsetY + dy / scale;
+                    commitStrokesToBackground();
+                    renderToDisplay();
+                    return;
+                }
+
+                if (!drawing || mode === 'drag') {
+                    if (mode === 'erase') renderToDisplay();
+                    return;
+                }
+
+                // ===== requestAnimationFrame 节流 =====
+                if (rafId) return;
+                rafId = requestAnimationFrame(() => {
+                    rafId = null;
+                    
+                    const worldPos = screenToWorld(screenPos.x, screenPos.y);
+                    const dynamicWidth = getDynamicWidth(worldPos.x, worldPos.y, e.pressure);
+                    
+                    // 更新当前笔画的宽度
+                    currentStroke.width = mode === 'write' ? dynamicWidth : eraserWidth;
+                    
+                    currentStroke.points.push({ x: worldPos.x, y: worldPos.y });
+                    
+                    // ===== 性能优化 3：只渲染当前笔画到临时层 =====
+                    renderToDisplay(currentStroke.points);
+                    
+                    prevWorldX = worldPos.x;
+                    prevWorldY = worldPos.y;
+                    lastPointTime = Date.now();
+                });
+            });
+
+            window.addEventListener('pointerup', (e) => {
+                if (isRightDragging) { isRightDragging = false; displayCanvas.style.cursor = mode === 'drag' ? 'move' : 'crosshair'; return; }
+                if (dragAction === 'pan') { dragAction = null; displayCanvas.style.cursor = 'move'; return; }
+                
+                drawing = false;
+                currentStroke = null;
+                prevWorldX = null;
+                prevWorldY = null;
+                
+                // 将当前笔画提交到背景层
+                commitStrokesToBackground();
+                renderToDisplay();
+            });
+
+            // ===== 触摸事件（双指缩放） =====
+            displayCanvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 2) {
+                    touchMode = 'pinch';
+                    initialPinchDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    initialScale = scale;
+                    initialPinchOffsetX = offsetX;
+                    initialPinchOffsetY = offsetY;
+                    return;
+                }
+                // 单指处理...
+            }, { passive: false });
+
+            displayCanvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 2 && touchMode === 'pinch') {
+                    const newDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    if (initialPinchDistance > 0) {
+                        const factor = newDist / initialPinchDistance;
+                        const newScale = Math.max(0.1, Math.min(5, initialScale * factor));
+                        
+                        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                        const cx = W / 2, cy = H / 2;
+                        const worldMidX = (midX - cx) / initialScale + cx - initialPinchOffsetX;
+                        const worldMidY = (midY - cy) / initialScale + cy - initialPinchOffsetY;
+                        
+                        scale = newScale;
+                        offsetX = -worldMidX + (midX - cx) / newScale + cx;
+                        offsetY = -worldMidY + (midY - cy) / newScale + cy;
+                        
+                        commitStrokesToBackground();
+                        renderToDisplay();
+                    }
+                }
+            }, { passive: false });
+
+            displayCanvas.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) touchMode = null;
+            });
+
+            // ===== 按钮状态 =====
+            function updateBtnStates() {
+                btnWrite.classList.toggle('active', mode === 'write' && paletteVisible);
+                btnDrag.classList.toggle('active', mode === 'drag');
+                btnEraser.classList.toggle('active', mode === 'erase' && eraserPanelVisible);
+                btnBgColor.classList.toggle('active', bgColorPanelVisible);
+                panIndicator.style.display = mode === 'drag' ? 'block' : 'none';
+            }
+
+            function setMode(m) {
+                mode = m;
+                displayCanvas.style.cursor = mode === 'write' ? 'crosshair' : (mode === 'drag' ? 'move' : 'cell');
+                if (mode !== 'write') hidePalette();
+                if (mode !== 'erase') hideEraserPanel();
+                updateBtnStates();
+            }
+
+            btnWrite.addEventListener('click', () => {
+                if (mode !== 'write') { setMode('write'); showPalette(); }
+                else paletteVisible ? hidePalette() : showPalette();
+                updateBtnStates();
+            });
+            btnDrag.addEventListener('click', () => setMode(mode === 'drag' ? 'write' : 'drag'));
+            btnEraser.addEventListener('click', () => {
+                if (mode !== 'erase') { setMode('erase'); showEraserPanel(); }
+                else eraserPanelVisible ? hideEraserPanel() : showEraserPanel();
+                updateBtnStates();
+            });
+            btnBgColor.addEventListener('click', () => {
+                if (bgColorPanelVisible) hideBgColorPanel(); else showBgColorPanel();
+                updateBtnStates();
+            });
+            btnUndo.addEventListener('click', undo);
+            btnRedo.addEventListener('click', redo);
+            btnSave.addEventListener('click', saveStrokes);
+            btnLoad.addEventListener('click', loadStrokes);
+            btnExport.addEventListener('click', exportImage);
+
+            function showPalette() { palettePanel.style.display = 'block'; paletteVisible = true; positionPanel(palettePanel); }
+            function hidePalette() { palettePanel.style.display = 'none'; paletteVisible = false; }
+            function showEraserPanel() { eraserPanel.style.display = 'block'; eraserPanelVisible = true; positionPanel(eraserPanel); }
+            function hideEraserPanel() { eraserPanel.style.display = 'none'; eraserPanelVisible = false; }
+            function showBgColorPanel() { bgColorPanel.style.display = 'block'; bgColorPanelVisible = true; positionPanel(bgColorPanel); }
+            function hideBgColorPanel() { bgColorPanel.style.display = 'none'; bgColorPanelVisible = false; }
+            function hideAllPanels() { hidePalette(); hideEraserPanel(); hideBgColorPanel(); }
+
+            // 面板定位
+            function positionPanel(panel) {
+                const tb = toolbar.getBoundingClientRect();
+                const pw = panel.offsetWidth, ph = panel.offsetHeight;
+                let x = tb.left, y = tb.top - ph - 5;
+                if (y < 0) { x = tb.right + 5; y = tb.top; }
+                if (x + pw > window.innerWidth) x = tb.left - pw - 5;
+                panel.style.left = Math.max(0, x) + 'px';
+                panel.style.top = Math.max(0, y) + 'px';
+            }
+
+            closePalette.addEventListener('click', () => { hidePalette(); updateBtnStates(); });
+            closeEraser.addEventListener('click', () => { hideEraserPanel(); updateBtnStates(); });
+            closeBgColor.addEventListener('click', () => { hideBgColorPanel(); updateBtnStates(); });
+
+            // 颜色和粗细
+            colorGrid.addEventListener('click', (e) => {
+                const btn = e.target.closest('.color-btn');
+                if (!btn) return;
+                penColor = btn.dataset.color;
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+            eraserGrid.addEventListener('click', (e) => {
+                const btn = e.target.closest('.eraser-btn');
+                if (!btn) return;
+                eraserWidth = parseInt(btn.dataset.size);
+                document.querySelectorAll('.eraser-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+            bgColorPanel.addEventListener('click', (e) => {
+                const btn = e.target.closest('.bg-color-btn');
+                if (!btn) return;
+                setBgColor(btn.dataset.bg);
+            });
+
+            function setBgColor(color) {
+                bgColor = color;
+                document.body.style.background = color;
+                document.querySelectorAll('.bg-color-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector(`.bg-color-btn[data-bg="${color}"]`)?.classList.add('active');
+                commitStrokesToBackground();
+                renderToDisplay();
+            }
+
+            // ===== 工具栏 =====
+            function toggleToolbar() {
+                toolbarExpanded = !toolbarExpanded;
+                if (toolbarExpanded) {
+                    toolbarContent.classList.remove('hidden');
+                    toolbarContent.classList.add('visible');
+                    resetAutoHideTimer();
+                } else {
+                    toolbarContent.classList.remove('visible');
+                    toolbarContent.classList.add('hidden');
+                    clearAutoHideTimer();
+                    hideAllPanels();
+                }
+            }
+
+            function resetAutoHideTimer() {
+                clearAutoHideTimer();
+                autoHideTimer = setTimeout(() => {
+                    if (toolbarExpanded && !drawing && !draggingToolbar && dragAction === null) {
+                        toggleToolbar();
+                    }
+                }, 5000);
+            }
+
+            function clearAutoHideTimer() {
+                if (autoHideTimer) { clearTimeout(autoHideTimer); autoHideTimer = null; }
+            }
+
+            grip.addEventListener('click', (e) => { e.stopPropagation(); toggleToolbar(); });
+
+            // 活动时重置计时器
+            ['mousemove', 'mousedown', 'keydown'].forEach(evt => {
+                document.addEventListener(evt, () => { if (toolbarExpanded) resetAutoHideTimer(); });
+            });
+
+            // 工具栏拖动
+            grip.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                draggingToolbar = true;
+                dragStartX = e.clientX; dragStartY = e.clientY;
+                const rect = toolbar.getBoundingClientRect();
+                toolbarStartX = rect.left; toolbarStartY = rect.top;
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (draggingToolbar) {
+                    const dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
+                    let newX = toolbarStartX + dx, newY = toolbarStartY + dy;
+                    newX = Math.max(0, Math.min(window.innerWidth - toolbar.offsetWidth, newX));
+                    newY = Math.max(0, Math.min(window.innerHeight - toolbar.offsetHeight, newY));
+                    toolbar.style.left = newX + 'px'; toolbar.style.top = newY + 'px';
+                    toolbar.style.bottom = 'auto'; toolbar.style.right = 'auto';
+                }
+                if (draggingPanel) {
+                    const dx = e.clientX - panelMouseStartX, dy = e.clientY - panelMouseStartY;
+                    panelMouseStartX = e.clientX; panelMouseStartY = e.clientY;
+                    const panel = draggingPanel === 'palette' ? palettePanel : 
+                                  draggingPanel === 'eraser' ? eraserPanel : bgColorPanel;
+                    panel.style.left = (panel.offsetLeft + dx) + 'px';
+                    panel.style.top = (panel.offsetTop + dy) + 'px';
+                }
+            });
+            window.addEventListener('mouseup', () => { draggingToolbar = false; draggingPanel = null; });
+
+            // 面板拖动
+            function enablePanelDrag(header, panelName) {
+                header.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('close-btn')) return;
+                    draggingPanel = panelName;
+                    panelMouseStartX = e.clientX; panelMouseStartY = e.clientY;
+                    e.preventDefault();
+                });
+            }
+            enablePanelDrag(paletteHeader, 'palette');
+            enablePanelDrag(eraserHeader, 'eraser');
+            enablePanelDrag(bgColorHeader, 'bgColor');
+
+            // 滚轮缩放
+            displayCanvas.addEventListener('wheel', (e) => {
+                if (mode !== 'drag') return;
+                e.preventDefault();
+                const factor = e.deltaY < 0 ? 1.1 : 0.9;
+                const newScale = Math.max(0.1, Math.min(5, scale * factor));
+                scale = newScale;
+                commitStrokesToBackground();
+                renderToDisplay();
+            }, { passive: false });
+
+            // 清屏
+            btnClear.addEventListener('click', () => {
+                strokes = [];
+                scale = 1.0; offsetX = 0; offsetY = 0;
+                undoStack = []; redoStack = [];
+                commitStrokesToBackground();
+                renderToDisplay();
+            });
+
+            // 保存/加载/导出
+            function saveStrokes() {
+                if (strokes.length === 0) { alert('当前没有书写内容可保存'); return; }
+                const data = {
+                    version: '2.0', scale, offsetX, offsetY, bgColor,
+                    strokes: strokes.map(s => ({ color: s.color, width: s.width, points: s.points.map(p => ({ x: p.x, y: p.y })) }))
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.download = 'blackboard_' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.json';
+                a.href = URL.createObjectURL(blob);
+                a.click();
+            }
+
+            function loadStrokes() { fileInput.click(); }
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const data = JSON.parse(evt.target.result);
+                        if (!data.strokes || !Array.isArray(data.strokes)) { alert('文件格式不正确'); return; }
+                        if (strokes.length > 0 && !confirm('加载将覆盖当前板书内容，是否继续？')) return;
+                        strokes = data.strokes.map(s => ({ color: s.color, width: s.width, points: s.points }));
+                        if (typeof data.scale === 'number') scale = data.scale;
+                        if (typeof data.offsetX === 'number') offsetX = data.offsetX;
+                        if (typeof data.offsetY === 'number') offsetY = data.offsetY;
+                        if (typeof data.bgColor === 'string') setBgColor(data.bgColor);
+                        undoStack = []; redoStack = [];
+                        commitStrokesToBackground();
+                        renderToDisplay();
+                    } catch (err) { alert('文件读取失败：' + err.message); }
+                };
+                reader.readAsText(file);
+                fileInput.value = '';
+            });
+
+            function exportImage() {
+                if (strokes.length === 0) { alert('当前没有书写内容可导出'); return; }
+                const orig = [toolbar, palettePanel, eraserPanel, bgColorPanel, panIndicator].map(el => el.style.display);
+                toolbar.style.display = 'none'; palettePanel.style.display = 'none';
+                eraserPanel.style.display = 'none'; bgColorPanel.style.display = 'none';
+                panIndicator.style.display = 'none';
+                setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.download = 'blackboard_' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.png';
+                    a.href = displayCanvas.toDataURL('image/png');
+                    a.click();
+                    [toolbar, palettePanel, eraserPanel, bgColorPanel, panIndicator].forEach((el, i) => el.style.display = orig[i]);
+                }, 100);
+            }
+
+            // 全屏
+            function requestFullscreen() {
+                const doc = document.documentElement;
+                (doc.requestFullscreen || doc.webkitRequestFullscreen).call(doc).catch(() => {});
+            }
+            btnFullscreen.addEventListener('click', requestFullscreen);
+            btnExit.addEventListener('click', () => {
+                if (document.fullscreenElement) document.exitFullscreen();
+                else if (document.webkitFullscreenElement) document.webkitExitFullscreen();
+            });
+
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement) {
+                    toolbar.style.top = 'auto'; toolbar.style.bottom = '20px';
+                    toolbar.style.left = '20px'; toolbar.style.right = 'auto';
+                }
+            });
+
+            // 键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveStrokes(); }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'o') { e.preventDefault(); loadStrokes(); }
+            });
+
+            // 初始化
+            setMode('write');
+            hideAllPanels();
+            updateBtnStates();
+            commitStrokesToBackground();
+            renderToDisplay();
+
+            // 首次点击全屏
+            let autoFS = false;
+            document.addEventListener('click', function afs() {
+                if (!autoFS && !document.fullscreenElement) { autoFS = true; requestFullscreen(); }
+            }, { once: true });
+        })();
+    </script>
+</body>
+</html>
