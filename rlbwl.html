@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes" />
+    <title>智能日历备忘录 · 重构版</title>
+    <script src="https://unpkg.com/vue@3.2.47/dist/vue.global.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/dist/umd/supabase.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js">
+    </script>
+    <style>
+        /* ---------- 全局重置 ---------- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        #app {
+            width: 100%;
+            max-width: 1200px;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ---------- 登录 ---------- */
+        .login-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .login-box {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+            background: #f9f9f9;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .login-box h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .login-box .input-group {
+            margin-bottom: 20px;
+        }
+        .login-box .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #555;
+        }
+        .login-box .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: #4a7abc;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .login-btn:hover {
+            background: #3a5c9a;
+        }
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .error-msg {
+            color: #e53935;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        /* ---------- 导航栏 ---------- */
+        .navbar {
+            background: #4a7abc;
+            color: #fff;
+            padding: 10px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .navbar .nav-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            flex: 1;
+            text-align: center;
+            min-width: 120px;
+        }
+        .navbar .nav-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .navbar button {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .navbar button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .navbar button.primary {
+            background: #fff;
+            color: #4a7abc;
+            border: none;
+        }
+        .navbar button.primary:hover {
+            background: #e8edf5;
+        }
+        .navbar button.danger {
+            background: #dc3545;
+            border-color: #dc3545;
+        }
+        .navbar button.danger:hover {
+            background: #c82333;
+        }
+        .navbar .mode-work {
+            background: #4a7abc;
+        }
+        .navbar .mode-life {
+            background: #e91e63;
+        }
+
+        /* ---------- 视图切换标签 ---------- */
+        .view-tabs {
+            display: flex;
+            gap: 4px;
+            background: #e9ecef;
+            border-radius: 30px;
+            padding: 3px;
+        }
+        .view-tabs button {
+            background: transparent;
+            border: none;
+            color: #555;
+            padding: 5px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .view-tabs button.active {
+            background: #fff;
+            color: #4a7abc;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        }
+        .view-tabs button:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* ---------- 日历容器 ---------- */
+        .calendar-container {
+            flex: 1;
+            padding: 12px;
+            overflow-x: auto;
+            background: #f8f9fa;
+        }
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            background: #4a7abc;
+            color: #fff;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 2px;
+        }
+        .weekdays .weekday {
+            text-align: center;
+            padding: 10px 0;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        /* 周视图 grid-fix */
+        .week-view.grid-fix {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            grid-template-rows: auto 400px 400px;
+            gap: 2px;
+        }
+        .week-view.grid-fix .weekday {
+            background: #4a7abc;
+            color: #fff;
+            text-align: center;
+            padding: 10px 0;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border-radius: 8px 8px 0 0;
+        }
+        .week-view.grid-fix .day-cell {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 6px;
+            cursor: pointer;
+            transition: background 0.1s;
+            min-height: 100px;
+        }
+        .week-view.grid-fix .day-cell:hover {
+            background: #f5f5f5;
+        }
+        .week-view.grid-fix .day-cell.today {
+            background: #fff3e0;
+            border-color: #ffb74d;
+        }
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .day-header .day-number {
+            font-weight: 700;
+            color: #333;
+        }
+        .day-header .month-info {
+            color: #888;
+            font-size: 0.7rem;
+        }
+        .today .day-header .day-number {
+            color: #e53935;
+        }
+        .note-preview {
+            flex: 1;
+            overflow-y: auto;
+            background: #fff9c4;
+            border-radius: 4px;
+            padding: 6px;
+            font-size: 0.8rem;
+            margin-top: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 100%;
+        }
+        .note-preview.placeholder {
+            color: #aaa;
+            background: transparent;
+        }
+
+        /* 月视图 */
+        .month-view .week-row {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            margin-bottom: 2px;
+        }
+        .month-view .day-cell {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 6px;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .month-view .day-cell:hover {
+            background: #f5f5f5;
+        }
+        .month-view .day-cell.other-month {
+            background: #f8f9fa;
+            opacity: 0.6;
+        }
+        .month-view .day-cell.today {
+            background: #fff3e0;
+            border-color: #ffb74d;
+        }
+        .month-view .note-preview {
+            background: #fff9c4;
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 0.75rem;
+            margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        /* ---------- 笔记列表视图 ---------- */
+        .notes-list-view {
+            padding: 12px 0;
+        }
+        .notes-list-view .search-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        .notes-list-view .search-bar input[type="text"] {
+            flex: 1;
+            min-width: 160px;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 30px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+        .notes-list-view .search-bar input[type="text"]:focus {
+            border-color: #4a7abc;
+            box-shadow: 0 0 0 2px rgba(74, 122, 188, 0.15);
+        }
+        .notes-list-view .search-bar .filter-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .notes-list-view .search-bar .filter-group select,
+        .notes-list-view .search-bar .filter-group input[type="date"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            background: #fff;
+            outline: none;
+        }
+        .notes-list-view .search-bar .filter-group select:focus,
+        .notes-list-view .search-bar .filter-group input[type="date"]:focus {
+            border-color: #4a7abc;
+        }
+        .notes-list-view .stats {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .notes-list-view .note-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 14px 16px;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid #e8e8e8;
+            margin-bottom: 8px;
+            transition: box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .notes-list-view .note-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+        .notes-list-view .note-item .note-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .notes-list-view .note-item .note-info .note-date {
+            font-weight: 600;
+            color: #4a7abc;
+            font-size: 0.85rem;
+        }
+        .notes-list-view .note-item .note-info .note-content {
+            margin-top: 4px;
+            color: #333;
+            font-size: 0.95rem;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+        .notes-list-view .note-item .note-info .note-mode-tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 2px 10px;
+            border-radius: 30px;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+        .notes-list-view .note-item .note-info .note-mode-tag.work {
+            background: #e3f0ff;
+            color: #4a7abc;
+        }
+        .notes-list-view .note-item .note-info .note-mode-tag.life {
+            background: #fce4ec;
+            color: #e91e63;
+        }
+        .notes-list-view .note-item .note-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+            margin-left: 12px;
+        }
+        .notes-list-view .note-item .note-actions button {
+            background: transparent;
+            border: none;
+            color: #999;
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .notes-list-view .note-item .note-actions button:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .notes-list-view .note-item .note-actions button.delete:hover {
+            color: #dc3545;
+            background: #fde8e8;
+        }
+        .notes-list-view .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .notes-list-view .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+        .notes-list-view .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .notes-list-view .pagination button {
+            background: #fff;
+            border: 1px solid #ddd;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .notes-list-view .pagination button:hover:not(:disabled) {
+            background: #f0f2f5;
+            border-color: #bbb;
+        }
+        .notes-list-view .pagination button.active {
+            background: #4a7abc;
+            color: #fff;
+            border-color: #4a7abc;
+        }
+        .notes-list-view .pagination button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* ---------- 模态框 ---------- */
+        .modal-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal-container {
+            background: #fff;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .modal-header .modal-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .modal-header .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #999;
+            cursor: pointer;
+        }
+        .modal-header .close-btn:hover {
+            color: #333;
+        }
+        .modal-container textarea.note-editor {
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 10px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+            min-height: 140px;
+            outline: none;
+            transition: border 0.2s;
+        }
+        .modal-container textarea.note-editor:focus {
+            border-color: #4a7abc;
+            box-shadow: 0 0 0 2px rgba(74, 122, 188, 0.15);
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .modal-actions button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 30px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal-actions button.cancel {
+            background: #e9ecef;
+            color: #555;
+        }
+        .modal-actions button.cancel:hover {
+            background: #dee2e6;
+        }
+        .modal-actions button.save {
+            background: #4a7abc;
+            color: #fff;
+        }
+        .modal-actions button.save:hover {
+            background: #3a5c9a;
+        }
+
+        /* ---------- 加载 ---------- */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e9ecef;
+            border-top-color: #4a7abc;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ---------- 响应式 ---------- */
+        @media (max-width: 700px) {
+            .navbar {
+                flex-direction: column;
+                padding: 10px 12px;
+            }
+            .navbar .nav-title {
+                order: -1;
+                margin-bottom: 4px;
+                font-size: 1rem;
+            }
+            .navbar .nav-group {
+                justify-content: center;
+            }
+            .week-view.grid-fix {
+                grid-template-rows: auto 340px 340px;
+            }
+            .week-view.grid-fix .day-cell {
+                padding: 4px;
+                min-height: 80px;
+            }
+            .month-view .day-cell {
+                min-height: 70px;
+                padding: 4px;
+            }
+            .notes-list-view .search-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .notes-list-view .search-bar .filter-group {
+                justify-content: stretch;
+            }
+            .notes-list-view .search-bar .filter-group select,
+            .notes-list-view .search-bar .filter-group input[type="date"] {
+                flex: 1;
+            }
+            .modal-container {
+                padding: 16px;
+            }
+        }
+        @media (max-width: 500px) {
+            .week-view.grid-fix {
+                grid-template-rows: auto 280px 280px;
+            }
+            .week-view.grid-fix .day-cell {
+                padding: 2px;
+                font-size: 0.75rem;
+                min-height: 60px;
+            }
+            .week-view.grid-fix .day-cell .day-header {
+                font-size: 0.7rem;
+            }
+            .month-view .day-cell {
+                min-height: 50px;
+                padding: 2px;
+                font-size: 0.7rem;
+            }
+            .month-view .day-cell .note-preview {
+                font-size: 0.6rem;
+                -webkit-line-clamp: 1;
+            }
+            .notes-list-view .note-item {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .notes-list-view .note-item .note-actions {
+                margin-left: 0;
+                margin-top: 8px;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- ====== 登录视图 ====== -->
+        <div v-if="!loggedIn" class="login-container">
+            <div class="login-box">
+                <h2>🔐 日历备忘录登录</h2>
+                <div class="input-group">
+                    <label>邮箱</label>
+                    <input type="email" v-model="loginEmail" @keyup.enter="login" placeholder="请输入邮箱" autocomplete="email" />
+                </div>
+                <div class="input-group">
+                    <label>密码</label>
+                    <input type="password" v-model="loginPassword" @keyup.enter="login" placeholder="请输入密码" autocomplete="current-password" />
+                </div>
+                <button class="login-btn" @click="login" :disabled="loggingIn">
+                    {{ loggingIn ? '登录中…' : '登 录' }}
+                </button>
+                <div v-if="loginError" class="error-msg">{{ loginError }}</div>
+            </div>
+        </div>
+
+        <!-- ====== 主应用（登录后） ====== -->
+        <template v-else>
+            <!-- 导航栏 -->
+            <div class="navbar" :class="'mode-' + noteMode">
+                <div class="nav-group">
+                    <button @click="previous">‹</button>
+                    <button @click="next">›</button>
+                    <button @click="goToday">今天</button>
+                </div>
+                <div class="nav-title">{{ titleText }}</div>
+                <div class="nav-group">
+                    <div class="view-tabs">
+                        <button :class="{ active: currentView === 'calendar' }" @click="switchView('calendar')">📅 日历</button>
+                        <button :class="{ active: currentView === 'list' }" @click="switchView('list')">📋 列表</button>
+                    </div>
+                    <button @click="toggleMode" class="primary">
+                        {{ noteMode === 'work' ? '💼 工作' : '🌸 生活' }}
+                    </button>
+                    <button class="danger" @click="logout">退出</button>
+                </div>
+            </div>
+
+            <!-- 日历视图 -->
+            <div v-if="currentView === 'calendar'" class="calendar-container">
+                <div v-if="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top:12px;">加载数据中…</p>
+                </div>
+                <template v-else>
+                    <!-- 周视图 -->
+                    <div v-if="viewMode === 'week'" class="week-view grid-fix">
+                        <div v-for="(d, idx) in weekDays" :key="'h'+idx" class="weekday"
+                        :style="{ gridRow: 1, gridColumn: idx + 1 }">
+                        {{ d }}
+                    </div>
+                    <div v-for="(cell, idx) in week1" :key="'w1'+idx" class="day-cell"
+                    :class="{ today: cell.isToday }" @click="openEditor(cell.date, cell.note)"
+                    :style="{ gridRow: 2, gridColumn: idx + 1 }">
+                    <div class="day-header">
+                        <span class="day-number">{{ cell.day }}</span>
+                        <span class="month-info">{{ cell.month }}/{{ cell.yearShort }}</span>
+                    </div>
+                    <div v-if="cell.note" class="note-preview">{{ cell.note }}</div>
+                    <div v-else class="note-preview placeholder">点击添加笔记</div>
+                </div>
+                <div v-for="(cell, idx) in week2" :key="'w2'+idx" class="day-cell"
+                :class="{ today: cell.isToday }" @click="openEditor(cell.date, cell.note)"
+                :style="{ gridRow: 3, gridColumn: idx + 1 }">
+                <div class="day-header">
+                    <span class="day-number">{{ cell.day }}</span>
+                    <span class="month-info">{{ cell.month }}/{{ cell.yearShort }}</span>
+                </div>
+                <div v-if="cell.note" class="note-preview">{{ cell.note }}</div>
+                <div v-else class="note-preview placeholder">点击添加笔记</div>
+            </div>
+        </div>
+
+        <!-- 月视图 -->
+        <div v-else class="month-view">
+            <div class="weekdays">
+                <div class="weekday" v-for="d in weekDays" :key="d">{{ d }}</div>
+            </div>
+            <div v-for="(week, wIdx) in monthWeeks" :key="wIdx" class="week-row">
+                <div v-for="(cell, dIdx) in week" :key="dIdx" class="day-cell"
+                :class="{ today: cell.isToday, 'other-month': !cell.isCurrentMonth }"
+                @click="openEditor(cell.date, cell.note)">
+                <div class="day-header">
+                    <span class="day-number">{{ cell.day }}</span>
+                </div>
+                <div v-if="cell.note" class="note-preview">{{ cell.notePreview }}</div>
+            </div>
+        </div>
+    </div>
+</template>
+</div>
+
+<!-- 笔记列表视图（含全文搜索与遍历） -->
+<div v-else class="calendar-container">
+    <div class="notes-list-view">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" v-model="searchKeyword" placeholder="🔍 搜索笔记内容…" @input="onSearch" />
+            <div class="filter-group">
+                <select v-model="filterMode" @change="onSearch">
+                    <option value="all">全部模式</option>
+                    <option value="work">💼 工作</option>
+                    <option value="life">🌸 生活</option>
+                </select>
+                <input type="date" v-model="filterDateFrom" @change="onSearch" title="开始日期" />
+                <span style="color:#999; font-size:0.8rem;">至</span>
+                <input type="date" v-model="filterDateTo" @change="onSearch" title="结束日期" />
+                <button @click="clearFilters" style="background:#f0f0f0;border:1px solid #ddd;border-radius:30px;padding:6px 16px;font-size:0.8rem;cursor:pointer;">清除</button>
+            </div>
+        </div>
+
+        <!-- 统计 -->
+        <div class="stats" v-if="!loadingList">
+            共 <strong>{{ filteredNotes.length }}</strong> 条笔记
+            <span v-if="searchKeyword">，关键词 “{{ searchKeyword }}”</span>
+            <span v-if="filterMode !== 'all'">，模式 “{{ filterMode === 'work' ? '工作' : '生活' }}”</span>
+        </div>
+
+        <!-- 加载中 -->
+        <div v-if="loadingList" class="loading"><div class="spinner"></div><p style="margin-top:12px;">加载中…</p></div>
+
+        <!-- 笔记列表 -->
+        <template v-else>
+            <div v-if="paginatedNotes.length === 0" class="empty-state">
+                <div class="icon">📭</div>
+                <p>没有找到匹配的笔记</p>
+                <p style="font-size:0.85rem;margin-top:4px;">试试调整搜索关键词或筛选条件</p>
+            </div>
+            <div v-for="(item, idx) in paginatedNotes" :key="idx" class="note-item" @click="openEditor(item.date, item.note)">
+                <div class="note-info">
+                    <div class="note-date">{{ item.date }}</div>
+                    <div class="note-content">{{ item.note }}</div>
+                    <span class="note-mode-tag" :class="item.mode">{{ item.mode === 'work' ? '💼 工作' : '🌸 生活' }}</span>
+                </div>
+                <div class="note-actions" @click.stop>
+                    <button @click="openEditor(item.date, item.note)" title="编辑">✏️</button>
+                    <button class="delete" @click="deleteNote(item.date)" title="删除">🗑️</button>
+                </div>
+            </div>
+
+            <!-- 分页 -->
+            <div class="pagination" v-if="totalPages > 1">
+                <button @click="prevPage" :disabled="currentPage === 1">‹</button>
+                <button v-for="p in pageNumbers" :key="p" :class="{ active: p === currentPage }"
+                @click="goPage(p)">
+                {{ p }}
+            </button>
+            <button @click="nextPage" :disabled="currentPage === totalPages">›</button>
+        </div>
+    </template>
+</div>
+</div>
+
+<!-- ====== 笔记编辑模态框 ====== -->
+<div v-if="showModal" class="modal-mask" @click.self="closeModal">
+    <div class="modal-container">
+        <div class="modal-header">
+            <span class="modal-title">📝 {{ modalDate }}</span>
+            <button class="close-btn" @click="closeModal">✕</button>
+        </div>
+        <textarea v-model="modalContent" class="note-editor" placeholder="输入备忘录内容…" @keydown.ctrl.enter="saveModalNote"></textarea>
+        <div class="modal-actions">
+            <button class="cancel" @click="closeModal">取消</button>
+            <button class="save" @click="saveModalNote">💾 保存</button>
+        </div>
+    </div>
+</div>
+</template>
+</div>
+
+<script>
+    (function() {
+        const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+        const supabase = window.supabase;
+        const dayjs = window.dayjs;
+
+        // ---------- Supabase 配置 ----------
+        const SUPABASE_URL = 'https://axvrvqivbxxrniaabogy.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_ufXYQAWGDWzCs5Vyb8zW1Q_AvWfxz9e';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const FIXED_USER_ID = 'mhg_calendar';
+
+        const app = createApp({
+            setup() {
+                // ---------- 登录状态 ----------
+                const loggedIn = ref(false);
+                const loginEmail = ref('');
+                const loginPassword = ref('');
+                const loginError = ref('');
+                const loggingIn = ref(false);
+
+                // ---------- 应用状态 ----------
+                const currentView = ref('calendar'); // 'calendar' | 'list'
+                const viewMode = ref('week'); // 'week' | 'month'
+                const noteMode = ref('work'); // 'work' | 'life'
+                const currentDate = ref(dayjs());
+                const notes = ref({});
+                const loading = ref(false);
+
+                // ---------- 模态框 ----------
+                const showModal = ref(false);
+                const modalDate = ref('');
+                const modalContent = ref('');
+
+                // ---------- 笔记列表（搜索 & 遍历） ----------
+                const searchKeyword = ref('');
+                const filterMode = ref('all');
+                const filterDateFrom = ref('');
+                const filterDateTo = ref('');
+                const currentPage = ref(1);
+                const pageSize = ref(15);
+                const loadingList = ref(false);
+
+                // ---------- 辅助：周起始 ----------
+                const startOfWeek = (date) => {
+                    const d = dayjs(date);
+                    const day = d.day();
+                    const diff = day === 0 ? -6 : 1 - day;
+                    return d.add(diff, 'day');
+                };
+
+                // ---------- 数据加载 ----------
+                const loadFromCache = () => {
+                    const cached = localStorage.getItem(`notes_${noteMode.value}`);
+                    if (cached) {
+                        try { notes.value = JSON.parse(cached); } catch { notes.value = {}; }
+                        return true;
+                    }
+                    notes.value = {};
+                    return false;
+                };
+                const saveToCache = () => {
+                    localStorage.setItem(`notes_${noteMode.value}`, JSON.stringify(notes.value));
+                };
+
+                const loadNotes = async () => {
+                    loading.value = true;
+                    try {
+                        const { data, error } = await supabaseClient
+                            .from('calendar_notes')
+                            .select('notes')
+                            .eq('user_id', FIXED_USER_ID)
+                            .eq('mode', noteMode.value)
+                            .maybeSingle();
+                        if (error) throw error;
+                        if (data && data.notes) {
+                            notes.value = data.notes;
+                        } else {
+                            loadFromCache();
+                        }
+                        saveToCache();
+                    } catch (e) {
+                        console.warn('加载云端失败，使用本地缓存', e);
+                        loadFromCache();
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const saveNotes = async () => {
+                    saveToCache();
+                    try {
+                        const { data: existing } = await supabaseClient
+                            .from('calendar_notes')
+                            .select('id')
+                            .eq('user_id', FIXED_USER_ID)
+                            .eq('mode', noteMode.value)
+                            .maybeSingle();
+                        const payload = {
+                            user_id: FIXED_USER_ID,
+                            mode: noteMode.value,
+                            notes: notes.value,
+                            updated_at: new Date().toISOString()
+                        };
+                        if (existing) {
+                            await supabaseClient.from('calendar_notes').update(payload).eq('id', existing.id);
+                        } else {
+                            await supabaseClient.from('calendar_notes').insert(payload);
+                        }
+                    } catch (e) {
+                        console.error('云端保存失败，数据已保留本地', e);
+                    }
+                };
+
+                // ---------- 登录 / 退出 ----------
+                const login = async () => {
+                    if (!loginEmail.value || !loginPassword.value) {
+                        loginError.value = '请输入邮箱和密码';
+                        return;
+                    }
+                    loggingIn.value = true;
+                    loginError.value = '';
+                    try {
+                        const { data, error } = await supabaseClient.auth.signInWithPassword({
+                            email: loginEmail.value,
+                            password: loginPassword.value
+                        });
+                        if (error) throw error;
+                        loggedIn.value = true;
+                        await loadNotes();
+                        // 重置列表搜索状态
+                        searchKeyword.value = '';
+                        filterMode.value = 'all';
+                        filterDateFrom.value = '';
+                        filterDateTo.value = '';
+                        currentPage.value = 1;
+                    } catch (err) {
+                        loginError.value = err.message || '登录失败，请检查邮箱和密码';
+                    } finally {
+                        loggingIn.value = false;
+                    }
+                };
+
+                const logout = async () => {
+                    await supabaseClient.auth.signOut();
+                    loggedIn.value = false;
+                    loginEmail.value = '';
+                    loginPassword.value = '';
+                    notes.value = {};
+                };
+
+                // ---------- 模式切换 ----------
+                const toggleMode = async () => {
+                    await saveNotes();
+                    noteMode.value = noteMode.value === 'work' ? 'life' : 'work';
+                    await loadNotes();
+                    // 重置列表分页
+                    currentPage.value = 1;
+                };
+
+                // ---------- 日历导航 ----------
+                const goToday = async () => {
+                    await saveNotes();
+                    currentDate.value = dayjs();
+                };
+                const previous = async () => {
+                    await saveNotes();
+                    if (viewMode.value === 'week') currentDate.value = currentDate.value.subtract(2, 'week');
+                    else currentDate.value = currentDate.value.subtract(1, 'month');
+                };
+                const next = async () => {
+                    await saveNotes();
+                    if (viewMode.value === 'week') currentDate.value = currentDate.value.add(2, 'week');
+                    else currentDate.value = currentDate.value.add(1, 'month');
+                };
+                const toggleView = () => {
+                    viewMode.value = viewMode.value === 'week' ? 'month' : 'week';
+                };
+                const switchView = (view) => {
+                    currentView.value = view;
+                    if (view === 'list') {
+                        // 进入列表时刷新数据（从当前 notes 中读取）
+                        currentPage.value = 1;
+                    }
+                };
+
+                // ---------- 标题 ----------
+                const titleText = computed(() => {
+                    if (viewMode.value === 'week') {
+                        const start = startOfWeek(currentDate.value);
+                        const end = start.add(13, 'day');
+                        return `${start.format('YYYY年MM月DD日')} - ${end.format('YYYY年MM月DD日')}`;
+                    }
+                    return currentDate.value.format('YYYY年MM月');
+                });
+
+                // ---------- 周视图数据 ----------
+                const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+                const buildWeekCells = (offset) => {
+                    const start = startOfWeek(currentDate.value).add(offset, 'day');
+                    const cells = [];
+                    const todayStr = dayjs().format('YYYY-MM-DD');
+                    for (let i = 0; i < 7; i++) {
+                        const date = start.add(i, 'day');
+                        const dateStr = date.format('YYYY-MM-DD');
+                        cells.push({
+                            date: dateStr,
+                            day: date.date(),
+                            month: date.month() + 1,
+                            yearShort: date.format('YY'),
+                            isToday: dateStr === todayStr,
+                            note: notes.value[dateStr] || ''
+                        });
+                    }
+                    return cells;
+                };
+                const week1 = computed(() => buildWeekCells(0));
+                const week2 = computed(() => buildWeekCells(7));
+
+                // ---------- 月视图数据 ----------
+                const monthWeeks = computed(() => {
+                    const year = currentDate.value.year();
+                    const month = currentDate.value.month();
+                    const firstDay = dayjs(new Date(year, month, 1));
+                    const start = startOfWeek(firstDay);
+                    const weeks = [];
+                    const todayStr = dayjs().format('YYYY-MM-DD');
+                    for (let w = 0; w < 6; w++) {
+                        const week = [];
+                        for (let d = 0; d < 7; d++) {
+                            const date = start.add(w * 7 + d, 'day');
+                            const dateStr = date.format('YYYY-MM-DD');
+                            const note = notes.value[dateStr] || '';
+                            const notePreview = note.length > 10 ? note.slice(0, 8) + '…' : note;
+                            week.push({
+                                date: dateStr,
+                                day: date.date(),
+                                isCurrentMonth: date.month() === month,
+                                isToday: dateStr === todayStr,
+                                note: note,
+                                notePreview: notePreview
+                            });
+                        }
+                        weeks.push(week);
+                    }
+                    return weeks;
+                });
+
+                // ---------- 笔记编辑器 ----------
+                const openEditor = (date, content) => {
+                    modalDate.value = date;
+                    modalContent.value = content || '';
+                    showModal.value = true;
+                };
+                const closeModal = () => { showModal.value = false; };
+                const saveModalNote = async () => {
+                    const trimmed = modalContent.value.trim();
+                    if (trimmed) notes.value[modalDate.value] = trimmed;
+                    else delete notes.value[modalDate.value];
+                    await saveNotes();
+                    closeModal();
+                    // 如果当前在列表视图，刷新列表
+                    if (currentView.value === 'list') {
+                        // 触发重新计算
+                        currentPage.value = 1;
+                    }
+                };
+
+                // ---------- 笔记列表：全文搜索 + 遍历 ----------
+                // 将所有笔记转为数组
+                const allNotesArray = computed(() => {
+                    const result = [];
+                    for (const [date, note] of Object.entries(notes.value)) {
+                        if (note && note.trim()) {
+                            result.push({
+                                date: date,
+                                note: note.trim(),
+                                mode: noteMode.value // 当前模式
+                            });
+                        }
+                    }
+                    // 按日期降序（最新在前）
+                    result.sort((a, b) => b.date.localeCompare(a.date));
+                    return result;
+                });
+
+                // 过滤
+                const filteredNotes = computed(() => {
+                    let list = allNotesArray.value;
+
+                    // 关键词搜索（全文）
+                    if (searchKeyword.value.trim()) {
+                        const kw = searchKeyword.value.trim().toLowerCase();
+                        list = list.filter(item => item.note.toLowerCase().includes(kw));
+                    }
+
+                    // 模式筛选（当前已经在对应模式下，但 filterMode 用于跨模式搜索）
+                    // 由于 notes 已按当前模式加载，这里 filterMode 作为额外筛选
+                    // 但为了支持"全部模式"，我们需要跨模式搜索？当前只加载了单一模式的数据。
+                    // 所以 filterMode 在这里主要起 UI 提示作用，实际数据已是当前模式。
+                    // 增强：如果用户想跨模式搜索，可以切换模式。这里保持单一模式。
+
+                    // 日期范围
+                    if (filterDateFrom.value) {
+                        list = list.filter(item => item.date >= filterDateFrom.value);
+                    }
+                    if (filterDateTo.value) {
+                        list = list.filter(item => item.date <= filterDateTo.value);
+                    }
+
+                    return list;
+                });
+
+                // 分页
+                const totalPages = computed(() => Math.ceil(filteredNotes.value.length / pageSize.value));
+                const paginatedNotes = computed(() => {
+                    const start = (currentPage.value - 1) * pageSize.value;
+                    const end = start + pageSize.value;
+                    return filteredNotes.value.slice(start, end);
+                });
+
+                const pageNumbers = computed(() => {
+                    const pages = [];
+                    const total = totalPages.value;
+                    const current = currentPage.value;
+                    if (total <= 7) {
+                        for (let i = 1; i <= total; i++) pages.push(i);
+                    } else {
+                        pages.push(1);
+                        if (current > 3) pages.push('…');
+                        const startP = Math.max(2, current - 1);
+                        const endP = Math.min(total - 1, current + 1);
+                        for (let i = startP; i <= endP; i++) pages.push(i);
+                        if (current < total - 2) pages.push('…');
+                        pages.push(total);
+                    }
+                    return pages;
+                });
+
+                const onSearch = () => {
+                    currentPage.value = 1;
+                };
+                const clearFilters = () => {
+                    searchKeyword.value = '';
+                    filterMode.value = 'all';
+                    filterDateFrom.value = '';
+                    filterDateTo.value = '';
+                    currentPage.value = 1;
+                };
+                const prevPage = () => { if (currentPage.value > 1) currentPage.value--; };
+                const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++; };
+                const goPage = (p) => { if (p !== '…') currentPage.value = p; };
+
+                // 删除笔记（列表中的删除按钮）
+                const deleteNote = async (date) => {
+                    if (!confirm(`确定要删除 ${date} 的笔记吗？`)) return;
+                    delete notes.value[date];
+                    await saveNotes();
+                    // 刷新列表
+                    currentPage.value = 1;
+                };
+
+                // ---------- 自动登录恢复（已禁用，必须手动登录） ----------
+                onMounted(() => {
+                    // 不做自动登录
+                });
+
+                // ---------- 返回 ----------
+                return {
+                    // 登录
+                    loggedIn,
+                    loginEmail,
+                    loginPassword,
+                    loginError,
+                    loggingIn,
+                    login,
+                    logout,
+                    // 状态
+                    currentView,
+                    viewMode,
+                    noteMode,
+                    currentDate,
+                    notes,
+                    loading,
+                    showModal,
+                    modalDate,
+                    modalContent,
+                    // 日历
+                    weekDays,
+                    titleText,
+                    week1,
+                    week2,
+                    monthWeeks,
+                    toggleView,
+                    switchView,
+                    goToday,
+                    previous,
+                    next,
+                    toggleMode,
+                    // 编辑器
+                    openEditor,
+                    closeModal,
+                    saveModalNote,
+                    // 列表
+                    searchKeyword,
+                    filterMode,
+                    filterDateFrom,
+                    filterDateTo,
+                    currentPage,
+                    pageSize,
+                    loadingList,
+                    filteredNotes,
+                    paginatedNotes,
+                    totalPages,
+                    pageNumbers,
+                    onSearch,
+                    clearFilters,
+                    prevPage,
+                    nextPage,
+                    goPage,
+                    deleteNote,
+                };
+            }
+        });
+
+        app.mount('#app');
+    })();
+</script>
+</body>
+</html>
