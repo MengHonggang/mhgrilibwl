@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX 数学公式编辑器 · 行内修复版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --bg: #f8f9fb;
+            --surface: #ffffff;
+            --surface-alt: #f1f3f6;
+            --border: #e0e4ea;
+            --text: #1a1d23;
+            --text-muted: #949ba7;
+            --accent: #4a7cf7;
+            --accent-hover: #3b68e0;
+            --danger: #e0556a;
+            --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --radius-lg: 16px;
+            --font-mono: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: var(--font-sans);
+            background: #e8ecf1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            color: var(--text);
+        }
+        .app-container {
+            width: 100%;
+            max-width: 1400px;
+            height: 92vh;
+            max-height: 960px;
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            flex-shrink: 0;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .app-header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn {
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            background: var(--surface-alt);
+            color: var(--text);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn:hover { filter: brightness(0.95); }
+        .btn-pdf { background: #fef0f2; color: var(--danger); }
+        .btn-docx { background: #eef3fd; color: var(--accent); }
+        .btn-clear { background: var(--surface-alt); color: var(--text-muted); }
+        .main-content {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+        .divider-bar {
+            width: 6px;
+            background: var(--border);
+            cursor: col-resize;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+        .divider-bar:hover { background: var(--accent); }
+        .editor-panel, .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 250px;
+        }
+        .panel-header {
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-alt);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+        .editor-textarea {
+            flex: 1;
+            width: 100%;
+            border: none;
+            outline: none;
+            resize: none;
+            padding: 20px;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            line-height: 1.75;
+            background: var(--surface);
+            color: var(--text);
+        }
+        .preview-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 28px;
+            font-size: 0.95rem;
+            line-height: 1.85;
+            word-wrap: break-word;
+            background: #fcfdfe;
+        }
+        .formula-block {
+            display: block;
+            text-align: center;
+            margin: 18px 0;
+            padding: 14px 10px;
+            background: #f9fafc;
+            border-radius: 8px;
+            border: 1px solid #eef1f5;
+            overflow-x: auto;
+        }
+        .formula-inline {
+            display: inline;
+            padding: 1px 3px;
+            background: rgba(74, 124, 247, 0.04);
+            border-radius: 3px;
+        }
+        .error-block {
+            display: inline-block;
+            background: #fff5f5;
+            border: 1.5px dashed #e0556a;
+            border-radius: 6px;
+            padding: 2px 8px;
+            color: #c0392b;
+            font-size: 0.82rem;
+        }
+        .template-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--surface-alt);
+            flex-shrink: 0;
+            overflow-x: auto;
+            flex-wrap: wrap;
+        }
+        .template-btn {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-family: var(--font-mono);
+        }
+        .template-btn:hover { background: #eef3fd; border-color: #c5d4f7; color: var(--accent); }
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: #1a1d23;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            z-index: 9999;
+            pointer-events: none;
+            transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        @media (max-width: 768px) {
+            .main-content { flex-direction: column; }
+            .divider-bar { width: 100%; height: 5px; cursor: row-resize; }
+            .editor-panel, .preview-panel { min-width: auto; height: auto; }
+            .app-header { padding: 10px 14px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <header class="app-header">
+        <h1>📐 LaTeX 公式编辑器</h1>
+        <div class="header-actions">
+            <button class="btn btn-clear" onclick="clearAll()">🗑️ 清空</button>
+            <button class="btn btn-docx" onclick="exportAsDocx()">📄 导出 Word</button>
+            <button class="btn btn-pdf" onclick="exportAsPdf()">📕 导出 PDF</button>
+        </div>
+    </header>
+
+    <div class="main-content" id="mainContent">
+        <div class="editor-panel" id="editorPanel">
+            <div class="panel-header"><span>📝 编辑区</span><span>LaTeX 源码</span></div>
+            <textarea class="editor-textarea" id="editorTextarea" placeholder="在这里输入文字和 LaTeX 公式..."></textarea>
+        </div>
+        <div class="divider-bar" id="dividerBar" title="拖动调整面板大小"></div>
+        <div class="preview-panel" id="previewPanel">
+            <div class="panel-header"><span>👁️ 实时预览</span><span id="formulaCount">0 个公式</span></div>
+            <div class="preview-content" id="previewContent">
+                <div style="color:#ccc; text-align:center; padding-top:60px;">在左侧编辑区输入内容即可预览</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="template-bar">
+        <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">📐 快捷插入：</span>
+        <button class="template-btn" onclick="insertTemplate('inline')">$...$ 行内</button>
+        <button class="template-btn" onclick="insertTemplate('block')">$$...$$ 块级</button>
+        <button class="template-btn" onclick="insertTemplate('frac')">\frac{a}{b}</button>
+        <button class="template-btn" onclick="insertTemplate('sqrt')">\sqrt{x}</button>
+        <button class="template-btn" onclick="insertTemplate('int')">\int_a^b</button>
+        <button class="template-btn" onclick="insertTemplate('sum')">\sum_{i=1}^n</button>
+        <button class="template-btn" onclick="insertTemplate('matrix')">\begin{pmatrix}a&b\\c&d\end{pmatrix}</button>
+        <button class="template-btn" onclick="insertTemplate('alpha')">\alpha \beta \gamma</button>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+    const editorTextarea = document.getElementById('editorTextarea');
+    const previewContent = document.getElementById('previewContent');
+    const formulaCountBadge = document.getElementById('formulaCount');
+    const toast = document.getElementById('toast');
+    let debounceTimer = null;
+
+    function showToast(msg, type='info') {
+        toast.textContent = msg;
+        toast.className = 'toast ' + type;
+        void toast.offsetWidth;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    // ========== 核心：修复后的渲染逻辑 ==========
+    function parseAndRender(text) {
+        if (!text || text.trim() === '') return { html: '', formulaCount: 0 };
+
+        const escapeHtml = (str) => str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+        // 1. 提取所有块级公式（$$...$$），用占位符替换
+        const blockFormulas = [];
+        let processedText = text;
+        const blockRegex = /\$\$([\s\S]*?)\$\$/g;
+        let match;
+        let idx = 0;
+        while ((match = blockRegex.exec(text)) !== null) {
+            const placeholder = `__BLOCK_${idx}__`;
+            blockFormulas.push({ placeholder, formula: match[1].trim() });
+            processedText = processedText.replace(match[0], placeholder);
+            idx++;
+        }
+
+        // 2. 按双换行分割成段落
+        const paragraphs = processedText.split(/\n\n+/);
+        let totalFormulaCount = blockFormulas.length; // 块级公式计数
+
+        // 3. 逐段落处理行内公式
+        const renderedParagraphs = paragraphs.map(para => {
+            if (!para.trim()) return ''; // 跳过空段落
+            // 在段落内匹配行内公式 $...$
+            const inlineRegex = /(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g;
+            let result = '';
+            let lastIndex = 0;
+            let m;
+            while ((m = inlineRegex.exec(para)) !== null) {
+                // 添加公式前的普通文本（转义HTML）
+                if (m.index > lastIndex) {
+                    result += escapeHtml(para.substring(lastIndex, m.index));
+                }
+                const formula = m[1].trim();
+                try {
+                    const rendered = katex.renderToString(formula, {
+                        displayMode: false,
+                        throwOnError: true,
+                        strict: 'warn'
+                    });
+                    result += ` <span class="formula-inline">${rendered}</span> `;
+                    totalFormulaCount++;
+                } catch (e) {
+                    result += ` <span class="error-block" title="${escapeHtml(e.message)}">⚠️ ${escapeHtml(formula)}</span> `;
+                }
+                lastIndex = m.index + m[0].length;
+            }
+            // 添加段落剩余文本
+            if (lastIndex < para.length) {
+                result += escapeHtml(para.substring(lastIndex));
+            }
+            // 段落内单换行转<br>
+            result = result.replace(/\n/g, '<br>');
+            return `<p>${result}</p>`;
+        });
+
+        // 4. 将占位符替换回渲染后的块级公式
+        let finalHtml = renderedParagraphs.join('');
+        for (const bf of blockFormulas) {
+            let blockHtml;
+            try {
+                blockHtml = katex.renderToString(bf.formula, {
+                    displayMode: true,
+                    throwOnError: true,
+                    strict: 'warn'
+                });
+                // 块级公式包裹在div中
+                blockHtml = `<div class="formula-block">${blockHtml}</div>`;
+            } catch (e) {
+                blockHtml = `<div class="formula-block error-block">⚠️ ${escapeHtml(bf.formula)}<br><small>${escapeHtml(e.message)}</small></div>`;
+            }
+            finalHtml = finalHtml.replace(bf.placeholder, blockHtml);
+        }
+
+        return { html: finalHtml, formulaCount: totalFormulaCount };
+    }
+
+    function updatePreview() {
+        const text = editorTextarea.value;
+        const { html, formulaCount } = parseAndRender(text);
+        if (!html.trim()) {
+            previewContent.innerHTML = '<div style="color:#ccc; text-align:center; padding-top:60px;">在左侧编辑区输入内容即可预览</div>';
+            formulaCountBadge.textContent = '0 个公式';
+        } else {
+            previewContent.innerHTML = html;
+            formulaCountBadge.textContent = `${formulaCount} 个公式`;
+        }
+    }
+
+    function debouncedUpdate() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(updatePreview, 250);
+    }
+
+    editorTextarea.addEventListener('input', debouncedUpdate);
+    editorTextarea.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = this.selectionStart;
+            this.value = this.value.substring(0, start) + '    ' + this.value.substring(this.selectionEnd);
+            this.selectionStart = this.selectionEnd = start + 4;
+            debouncedUpdate();
+        }
+    });
+
+    // 拖拽分隔条
+    const dividerBar = document.getElementById('dividerBar');
+    const editorPanel = document.getElementById('editorPanel');
+    const previewPanel = document.getElementById('previewPanel');
+    let dragging = false, startX, startEditorWidth;
+    dividerBar.addEventListener('mousedown', (e) => {
+        dragging = true;
+        startX = e.clientX;
+        startEditorWidth = editorPanel.getBoundingClientRect().width;
+        document.body.style.cursor = 'col-resize';
+    });
+    window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const delta = e.clientX - startX;
+        const totalWidth = editorPanel.parentElement.getBoundingClientRect().width - 6;
+        const ratio = Math.min(0.8, Math.max(0.2, (startEditorWidth + delta) / totalWidth));
+        editorPanel.style.flex = 'none';
+        editorPanel.style.width = `${ratio*100}%`;
+        previewPanel.style.flex = 'none';
+        previewPanel.style.width = `${(1-ratio)*100}%`;
+    });
+    window.addEventListener('mouseup', () => {
+        dragging = false;
+        document.body.style.cursor = '';
+    });
+
+    // 模板插入
+    window.insertTemplate = function(type) {
+        const ta = editorTextarea;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const selected = ta.value.substring(start, end);
+        let insertion = '';
+        switch(type) {
+            case 'inline': insertion = selected ? `$${selected}$` : '$ $'; break;
+            case 'block': insertion = selected ? `\n$$${selected}$$\n` : '\n$$\n\n$$\n'; break;
+            case 'frac': insertion = `\\frac{${selected||'a'}}{b}`; break;
+            case 'sqrt': insertion = `\\sqrt{${selected||'x'}}`; break;
+            case 'int': insertion = `\\int_{${selected||'a'}}^{b} ${selected||'f(x)'}\\,dx`; break;
+            case 'sum': insertion = `\\sum_{${selected||'i=1'}}^{n} ${selected||'x_i'}`; break;
+            case 'matrix': insertion = `\\begin{pmatrix}\n  ${selected||'a'} & b \\\\\n  c & d\n\\end{pmatrix}`; break;
+            case 'alpha': insertion = '\\alpha \\beta \\gamma \\delta'; break;
+        }
+        ta.value = ta.value.substring(0, start) + insertion + ta.value.substring(end);
+        ta.focus();
+        const cursorPos = start + (type==='inline'&&!selected ? 2 : insertion.length);
+        ta.selectionStart = ta.selectionEnd = cursorPos;
+        updatePreview();
+        showToast('✅ 模板已插入');
+    };
+
+    window.clearAll = function() {
+        if (editorTextarea.value.trim() === '') return showToast('编辑区已为空');
+        if (confirm('确定清空所有内容？')) {
+            editorTextarea.value = '';
+            updatePreview();
+            showToast('🗑️ 已清空');
+        }
+    };
+
+    // 导出 PDF（同之前，但使用新解析结果）
+    window.exportAsPdf = function() {
+        if (!editorTextarea.value.trim()) return showToast('请先输入内容');
+        updatePreview();
+        const clone = previewContent.cloneNode(true);
+        const container = document.createElement('div');
+        container.style.cssText = 'font-family:sans-serif; font-size:12pt; padding:30px; max-width:750px; margin:0 auto; background:#fff;';
+        container.innerHTML = clone.innerHTML;
+        document.body.appendChild(container);
+        html2pdf().set({
+            margin: [8,6,8,6],
+            filename: 'latex-document.pdf',
+            html2canvas: { scale: 2, backgroundColor: '#fff' },
+            jsPDF: { unit: 'mm', format: 'a4' }
+        }).from(container).save().then(() => {
+            document.body.removeChild(container);
+            showToast('✅ PDF 导出成功');
+        });
+    };
+
+    window.exportAsDocx = function() {
+        if (!editorTextarea.value.trim()) return showToast('请先输入内容');
+        updatePreview();
+        const htmlContent = previewContent.innerHTML;
+        const wordHtml = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="UTF-8"><style>body{font-family:'PingFang SC','Microsoft YaHei',sans-serif; font-size:12pt;}.formula-block{text-align:center;margin:14px 0;}</style></head><body>${htmlContent}</body></html>`;
+        const blob = new Blob(['\ufeff'+wordHtml], {type:'application/msword'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'latex-document.doc';
+        link.click();
+        showToast('✅ Word 导出成功');
+    };
+
+    // 加载示例（展示行内公式）
+    function loadExample() {
+        editorTextarea.value = `函数 $y=\\log_2 x$ 是对数函数，它的图像经过点 $(1,0)$。\n\n著名的欧拉公式：$e^{i\\pi}+1=0$ 将五个基本常数联系在一起。\n\n块级公式示例：\n$$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$`;
+        updatePreview();
+        showToast('📖 示例已加载，请注意行内公式不会换行');
+    }
+    loadExample();
+    editorTextarea.focus();
+})();
+</script>
+</body>
+</html>
