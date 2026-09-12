@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes" />
+    <title>智能日历备忘录 · 重构版</title>
+    <script src="https://unpkg.com/vue@3.2.47/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    <style>
+        /* ---------- 全局重置 ---------- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5; min-height: 100vh;
+            display: flex; justify-content: center; align-items: flex-start;
+        }
+        #app {
+            width: 100%; max-width: 1200px; background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* ---------- 登录 / 注册 / 验证码 ---------- */
+        .login-container { flex: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .login-box {
+            width: 100%; max-width: 420px; padding: 40px;
+            background: #f9f9f9; border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .login-box h2 { text-align: center; margin-bottom: 30px; color: #333; }
+        .login-box .input-group { margin-bottom: 20px; }
+        .login-box .input-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #555; }
+        .login-box .input-group input {
+            width: 100%; padding: 12px; border: 1px solid #ddd;
+            border-radius: 6px; font-size: 1rem;
+        }
+        .login-box .input-group input:focus {
+            outline: none; border-color: #4a7abc;
+            box-shadow: 0 0 0 2px rgba(74,122,188,0.15);
+        }
+        /* 验证码专用输入框 */
+        .otp-input {
+            width: 100%; padding: 16px 12px; border: 2px solid #ddd;
+            border-radius: 8px; font-size: 1.6rem; text-align: center;
+            letter-spacing: 12px; font-weight: 700; color: #4a7abc;
+            font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
+            background: #fff;
+        }
+        .otp-input:focus {
+            outline: none; border-color: #4a7abc;
+            box-shadow: 0 0 0 3px rgba(74,122,188,0.15);
+        }
+        .login-btn {
+            width: 100%; padding: 14px; background: #4a7abc; color: #fff;
+            border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 700;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .login-btn:hover { background: #3a5c9a; }
+        .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .login-btn.register { background: #28a745; }
+        .login-btn.register:hover { background: #218838; }
+        .login-btn.verify { background: #4a7abc; }
+        .error-msg { color: #e53935; text-align: center; margin-top: 15px; font-size: 0.9rem; line-height: 1.5; }
+        .success-msg { color: #28a745; text-align: center; margin-top: 15px; font-size: 0.9rem; line-height: 1.5; }
+        .toggle-hint {
+            text-align: center; margin-top: 18px; font-size: 0.88rem; color: #888;
+        }
+        .toggle-hint a {
+            color: #4a7abc; cursor: pointer; text-decoration: underline;
+            font-weight: 500;
+        }
+        .toggle-hint a:hover { color: #3a5c9a; }
+        .back-hint {
+            text-align: center; margin-top: 12px; font-size: 0.85rem; color: #888;
+        }
+        .back-hint a {
+            color: #4a7abc; cursor: pointer; text-decoration: underline;
+        }
+        .verify-tip {
+            background: #e8f4ff; border: 1px solid #b3d7ff;
+            border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;
+            font-size: 0.9rem; color: #2a5d99; line-height: 1.6;
+        }
+        .verify-tip strong { color: #1e4d7d; }
+        .verify-tip .email-hi { color: #4a7abc; font-weight: 700; word-break: break-all; }
+        .resend-line {
+            text-align: center; margin-top: 16px;
+            font-size: 0.85rem; color: #888;
+        }
+        .resend-line a {
+            color: #4a7abc; cursor: pointer; text-decoration: underline;
+        }
+        .resend-line a.disabled {
+            color: #bbb; cursor: not-allowed; text-decoration: none;
+        }
+
+        /* ---------- 导航栏 ---------- */
+        .navbar {
+            background: #4a7abc; color: #fff; padding: 10px 16px;
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+            gap: 8px; flex-shrink: 0;
+        }
+        .navbar .nav-title { font-size: 1.1rem; font-weight: 700; flex: 1; text-align: center; min-width: 120px; }
+        .navbar .nav-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .navbar button {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+            color: #fff; padding: 6px 12px; border-radius: 30px;
+            font-size: 0.8rem; font-weight: 500; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .navbar button:hover { background: rgba(255,255,255,0.3); }
+        .navbar button.primary { background: #fff; color: #4a7abc; border: none; }
+        .navbar button.primary:hover { background: #e8edf5; }
+        .navbar button.danger { background: #dc3545; border-color: #dc3545; }
+        .navbar button.danger:hover { background: #c82333; }
+        .navbar .mode-work { background: #4a7abc; }
+        .navbar .mode-life { background: #e91e63; }
+
+        /* ---------- 视图切换标签 ---------- */
+        .view-tabs { display: flex; gap: 4px; background: #e9ecef; border-radius: 30px; padding: 3px; }
+        .view-tabs button {
+            background: transparent; border: none; color: #555;
+            padding: 5px 16px; border-radius: 30px; font-size: 0.8rem;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .view-tabs button.active { background: #fff; color: #4a7abc; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .view-tabs button:hover:not(.active) { background: rgba(255,255,255,0.5); }
+
+        /* ---------- 日历容器 ---------- */
+        .calendar-container { flex: 1; padding: 12px; overflow-x: auto; background: #f8f9fa; }
+        .weekdays {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            background: #4a7abc; color: #fff;
+            border-radius: 8px 8px 0 0; margin-bottom: 2px;
+        }
+        .weekdays .weekday { text-align: center; padding: 10px 0; font-weight: 700; font-size: 0.9rem; }
+
+        /* 周视图 grid-fix */
+        .week-view.grid-fix {
+            display: grid; grid-template-columns: repeat(7, minmax(0,1fr));
+            grid-template-rows: auto 400px 400px; gap: 2px;
+        }
+        .week-view.grid-fix .weekday {
+            background: #4a7abc; color: #fff; text-align: center;
+            padding: 10px 0; font-weight: 700; font-size: 0.9rem;
+            border-radius: 8px 8px 0 0;
+        }
+        .week-view.grid-fix .day-cell {
+            height: 100%; display: flex; flex-direction: column;
+            background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+            padding: 6px; cursor: pointer; transition: background 0.1s; min-height: 100px;
+        }
+        .week-view.grid-fix .day-cell:hover { background: #f5f5f5; }
+        .week-view.grid-fix .day-cell.today { background: #fff3e0; border-color: #ffb74d; }
+        .day-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.85rem; flex-shrink: 0; }
+        .day-header .day-number { font-weight: 700; color: #333; }
+        .day-header .month-info { color: #888; font-size: 0.7rem; }
+        .today .day-header .day-number { color: #e53935; }
+        .note-preview {
+            flex: 1; overflow-y: auto; background: #fff9c4;
+            border-radius: 4px; padding: 6px; font-size: 0.8rem;
+            margin-top: 4px; white-space: pre-wrap; word-wrap: break-word; max-height: 100%;
+        }
+        .note-preview.placeholder { color: #aaa; background: transparent; }
+
+        /* 月视图 */
+        .month-view .week-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; margin-bottom: 2px; }
+        .month-view .day-cell {
+            background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+            padding: 6px; min-height: 100px; display: flex; flex-direction: column;
+            cursor: pointer; transition: background 0.1s;
+        }
+        .month-view .day-cell:hover { background: #f5f5f5; }
+        .month-view .day-cell.other-month { background: #f8f9fa; opacity: 0.6; }
+        .month-view .day-cell.today { background: #fff3e0; border-color: #ffb74d; }
+        .month-view .note-preview {
+            background: #fff9c4; border-radius: 4px; padding: 4px; font-size: 0.75rem;
+            margin-top: 4px; overflow: hidden; text-overflow: ellipsis;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+
+        /* ---------- 笔记列表视图 ---------- */
+        .notes-list-view { padding: 12px 0; }
+        .notes-list-view .search-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
+        .notes-list-view .search-bar input[type="text"] {
+            flex: 1; min-width: 160px; padding: 10px 14px; border: 1px solid #ddd;
+            border-radius: 30px; font-size: 0.95rem; outline: none; transition: border 0.2s;
+        }
+        .notes-list-view .search-bar input[type="text"]:focus {
+            border-color: #4a7abc; box-shadow: 0 0 0 2px rgba(74,122,188,0.15);
+        }
+        .notes-list-view .search-bar .filter-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .notes-list-view .search-bar .filter-group select,
+        .notes-list-view .search-bar .filter-group input[type="date"] {
+            padding: 8px 12px; border: 1px solid #ddd; border-radius: 30px;
+            font-size: 0.85rem; background: #fff; outline: none;
+        }
+        .notes-list-view .search-bar .filter-group select:focus,
+        .notes-list-view .search-bar .filter-group input[type="date"]:focus { border-color: #4a7abc; }
+        .notes-list-view .stats { font-size: 0.85rem; color: #666; margin-bottom: 12px; }
+        .notes-list-view .note-item {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding: 14px 16px; background: #fff; border-radius: 10px;
+            border: 1px solid #e8e8e8; margin-bottom: 8px;
+            transition: box-shadow 0.2s; cursor: pointer;
+        }
+        .notes-list-view .note-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .notes-list-view .note-item .note-info { flex: 1; min-width: 0; }
+        .notes-list-view .note-item .note-info .note-date { font-weight: 600; color: #4a7abc; font-size: 0.85rem; }
+        .notes-list-view .note-item .note-info .note-content {
+            margin-top: 4px; color: #333; font-size: 0.95rem;
+            word-break: break-word; line-height: 1.5;
+        }
+        .notes-list-view .note-item .note-info .note-mode-tag {
+            display: inline-block; font-size: 0.7rem; padding: 2px 10px;
+            border-radius: 30px; margin-top: 6px; font-weight: 600;
+        }
+        .notes-list-view .note-item .note-info .note-mode-tag.work { background: #e3f0ff; color: #4a7abc; }
+        .notes-list-view .note-item .note-info .note-mode-tag.life { background: #fce4ec; color: #e91e63; }
+        .notes-list-view .note-item .note-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 12px; }
+        .notes-list-view .note-item .note-actions button {
+            background: transparent; border: none; color: #999; font-size: 1.1rem;
+            cursor: pointer; padding: 4px 6px; border-radius: 4px; transition: all 0.2s;
+        }
+        .notes-list-view .note-item .note-actions button:hover { background: #f0f0f0; color: #333; }
+        .notes-list-view .note-item .note-actions button.delete:hover { color: #dc3545; background: #fde8e8; }
+        .notes-list-view .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .notes-list-view .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+        .notes-list-view .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .notes-list-view .pagination button {
+            background: #fff; border: 1px solid #ddd; color: #333; padding: 6px 14px;
+            border-radius: 30px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+        }
+        .notes-list-view .pagination button:hover:not(:disabled) { background: #f0f2f5; border-color: #bbb; }
+        .notes-list-view .pagination button.active { background: #4a7abc; color: #fff; border-color: #4a7abc; }
+        .notes-list-view .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ---------- 模态框 ---------- */
+        .modal-mask {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: flex; align-items: center;
+            justify-content: center; z-index: 1000; padding: 20px;
+        }
+        .modal-container {
+            background: #fff; border-radius: 12px; width: 100%; max-width: 500px;
+            max-height: 90vh; overflow-y: auto; padding: 24px;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .modal-header .modal-title { font-size: 1.2rem; font-weight: 700; }
+        .modal-header .close-btn { background: none; border: none; font-size: 1.5rem; color: #999; cursor: pointer; }
+        .modal-header .close-btn:hover { color: #333; }
+        .modal-container textarea.note-editor {
+            width: 100%; border: 1px solid #ccc; border-radius: 6px; padding: 10px;
+            font-family: inherit; font-size: 0.95rem; resize: vertical;
+            min-height: 140px; outline: none; transition: border 0.2s;
+        }
+        .modal-container textarea.note-editor:focus {
+            border-color: #4a7abc; box-shadow: 0 0 0 2px rgba(74,122,188,0.15);
+        }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .modal-actions button {
+            padding: 10px 24px; border: none; border-radius: 30px;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .modal-actions button.cancel { background: #e9ecef; color: #555; }
+        .modal-actions button.cancel:hover { background: #dee2e6; }
+        .modal-actions button.save { background: #4a7abc; color: #fff; }
+        .modal-actions button.save:hover { background: #3a5c9a; }
+
+        /* ---------- 加载 ---------- */
+        .loading { text-align: center; padding: 60px 20px; color: #666; }
+        .spinner {
+            display: inline-block; width: 30px; height: 30px;
+            border: 3px solid #e9ecef; border-top-color: #4a7abc;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---------- 响应式 ---------- */
+        @media (max-width: 700px) {
+            .navbar { flex-direction: column; padding: 10px 12px; }
+            .navbar .nav-title { order: -1; margin-bottom: 4px; font-size: 1rem; }
+            .navbar .nav-group { justify-content: center; }
+            .week-view.grid-fix { grid-template-rows: auto 340px 340px; }
+            .week-view.grid-fix .day-cell { padding: 4px; min-height: 80px; }
+            .month-view .day-cell { min-height: 70px; padding: 4px; }
+            .notes-list-view .search-bar { flex-direction: column; align-items: stretch; }
+            .notes-list-view .search-bar .filter-group { justify-content: stretch; }
+            .notes-list-view .search-bar .filter-group select,
+            .notes-list-view .search-bar .filter-group input[type="date"] { flex: 1; }
+            .modal-container { padding: 16px; }
+            .login-box { padding: 24px; }
+        }
+        @media (max-width: 500px) {
+            .week-view.grid-fix { grid-template-rows: auto 280px 280px; }
+            .week-view.grid-fix .day-cell { padding: 2px; font-size: 0.75rem; min-height: 60px; }
+            .week-view.grid-fix .day-cell .day-header { font-size: 0.7rem; }
+            .month-view .day-cell { min-height: 50px; padding: 2px; font-size: 0.7rem; }
+            .month-view .day-cell .note-preview { font-size: 0.6rem; -webkit-line-clamp: 1; }
+            .notes-list-view .note-item { flex-direction: column; align-items: stretch; }
+            .notes-list-view .note-item .note-actions { margin-left: 0; margin-top: 8px; justify-content: flex-end; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- ====== 未登录：登录 / 注册 / 验证码 ====== -->
+        <div v-if="!loggedIn" class="login-container">
+            <div class="login-box">
+
+                <!-- ---- 登录表单 ---- -->
+                <template v-if="authStep === 'login'">
+                    <h2>🔐 日历备忘录登录</h2>
+                    <div class="input-group">
+                        <label>邮箱</label>
+                        <input type="email" v-model="loginEmail" @keyup.enter="login"
+                               placeholder="请输入邮箱" autocomplete="email" />
+                    </div>
+                    <div class="input-group">
+                        <label>密码</label>
+                        <input type="password" v-model="loginPassword" @keyup.enter="login"
+                               placeholder="请输入密码" autocomplete="current-password" />
+                    </div>
+                    <button class="login-btn" @click="login" :disabled="loggingIn">
+                        {{ loggingIn ? '登录中…' : '登 录' }}
+                    </button>
+                    <div v-if="loginError" class="error-msg">{{ loginError }}</div>
+                    <div v-if="loginSuccess" class="success-msg">{{ loginSuccess }}</div>
+                    <div class="toggle-hint">
+                        还没有账号？<a @click="goRegister">立即注册</a>
+                    </div>
+                </template>
+
+                <!-- ---- 注册表单（第一步）---- -->
+                <template v-else-if="authStep === 'register'">
+                    <h2>📝 注册新账号</h2>
+                    <div class="input-group">
+                        <label>邮箱</label>
+                        <input type="email" v-model="regEmail" @keyup.enter="register"
+                               placeholder="请输入邮箱" autocomplete="email" />
+                    </div>
+                    <div class="input-group">
+                        <label>密码</label>
+                        <input type="password" v-model="regPassword" @keyup.enter="register"
+                               placeholder="至少 6 位" autocomplete="new-password" />
+                    </div>
+                    <div class="input-group">
+                        <label>确认密码</label>
+                        <input type="password" v-model="regPassword2" @keyup.enter="register"
+                               placeholder="再次输入密码" autocomplete="new-password" />
+                    </div>
+                    <button class="login-btn register" @click="register" :disabled="registering">
+                        {{ registering ? '发送中…' : '注 册' }}
+                    </button>
+                    <div v-if="regError" class="error-msg">{{ regError }}</div>
+                    <div class="back-hint">
+                        <a @click="goLogin">← 返回登录</a>
+                    </div>
+                </template>
+
+                <!-- ---- 验证码表单（第二步）---- -->
+                <template v-else-if="authStep === 'verify'">
+                    <h2>📧 输入邮箱验证码</h2>
+                    <div class="verify-tip">
+                        我们已经向<br />
+                        <span class="email-hi">{{ otpEmail }}</span><br />
+                        发送了一封<strong>包含 6 位验证码</strong>的邮件。<br />
+                        请打开邮箱，把验证码填到下方。
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="otp-input" v-model="otpCode"
+                               @keyup.enter="verifyOtp"
+                               maxlength="6"
+                               inputmode="numeric"
+                               autocomplete="one-time-code"
+                               placeholder="______" />
+                    </div>
+                    <button class="login-btn verify" @click="verifyOtp" :disabled="verifying">
+                        {{ verifying ? '验证中…' : '验 证 并 登 录' }}
+                    </button>
+                    <div v-if="otpError" class="error-msg">{{ otpError }}</div>
+                    <div v-if="otpSuccess" class="success-msg">{{ otpSuccess }}</div>
+                    <div class="resend-line">
+                        没收到？
+                        <a v-if="resendCountdown > 0" class="disabled">
+                            {{ resendCountdown }} 秒后可重发
+                        </a>
+                        <a v-else @click="resendOtp">重新发送验证码</a>
+                    </div>
+                    <div class="back-hint">
+                        <a @click="goRegister">← 换个邮箱重新注册</a>
+                    </div>
+                </template>
+
+            </div>
+        </div>
+
+        <!-- ====== 主应用（登录后） ====== -->
+        <template v-else>
+            <!-- 导航栏 -->
+            <div class="navbar" :class="'mode-' + noteMode">
+                <div class="nav-group">
+                    <button @click="previous">‹</button>
+                    <button @click="next">›</button>
+                    <button @click="goToday">今天</button>
+                </div>
+                <div class="nav-title">{{ titleText }}</div>
+                <div class="nav-group">
+                    <div class="view-tabs">
+                        <button :class="{ active: currentView === 'calendar' }" @click="switchView('calendar')">📅 日历</button>
+                        <button :class="{ active: currentView === 'list' }" @click="switchView('list')">📋 列表</button>
+                    </div>
+                    <button @click="toggleMode" class="primary">
+                        {{ noteMode === 'work' ? '💼 工作' : '🌸 生活' }}
+                    </button>
+                    <button class="danger" @click="logout">退出</button>
+                </div>
+            </div>
+
+            <!-- 日历视图 -->
+            <div v-if="currentView === 'calendar'" class="calendar-container">
+                <div v-if="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top:12px;">加载数据中…</p>
+                </div>
+                <template v-else>
+                    <!-- 周视图 -->
+                    <div v-if="viewMode === 'week'" class="week-view grid-fix">
+                        <div v-for="(d, idx) in weekDays" :key="'h'+idx" class="weekday"
+                        :style="{ gridRow: 1, gridColumn: idx + 1 }">
+                        {{ d }}
+                    </div>
+                    <div v-for="(cell, idx) in week1" :key="'w1'+idx" class="day-cell"
+                    :class="{ today: cell.isToday }" @click="openEditor(cell.date, cell.note)"
+                    :style="{ gridRow: 2, gridColumn: idx + 1 }">
+                    <div class="day-header">
+                        <span class="day-number">{{ cell.day }}</span>
+                        <span class="month-info">{{ cell.month }}/{{ cell.yearShort }}</span>
+                    </div>
+                    <div v-if="cell.note" class="note-preview">{{ cell.note }}</div>
+                    <div v-else class="note-preview placeholder">点击添加笔记</div>
+                </div>
+                <div v-for="(cell, idx) in week2" :key="'w2'+idx" class="day-cell"
+                :class="{ today: cell.isToday }" @click="openEditor(cell.date, cell.note)"
+                :style="{ gridRow: 3, gridColumn: idx + 1 }">
+                <div class="day-header">
+                    <span class="day-number">{{ cell.day }}</span>
+                    <span class="month-info">{{ cell.month }}/{{ cell.yearShort }}</span>
+                </div>
+                <div v-if="cell.note" class="note-preview">{{ cell.note }}</div>
+                <div v-else class="note-preview placeholder">点击添加笔记</div>
+            </div>
+        </div>
+
+        <!-- 月视图 -->
+        <div v-else class="month-view">
+            <div class="weekdays">
+                <div class="weekday" v-for="d in weekDays" :key="d">{{ d }}</div>
+            </div>
+            <div v-for="(week, wIdx) in monthWeeks" :key="wIdx" class="week-row">
+                <div v-for="(cell, dIdx) in week" :key="dIdx" class="day-cell"
+                :class="{ today: cell.isToday, 'other-month': !cell.isCurrentMonth }"
+                @click="openEditor(cell.date, cell.note)">
+                <div class="day-header">
+                    <span class="day-number">{{ cell.day }}</span>
+                </div>
+                <div v-if="cell.note" class="note-preview">{{ cell.notePreview }}</div>
+            </div>
+        </div>
+    </div>
+</template>
+</div>
+
+<!-- 笔记列表视图（含全文搜索与遍历） -->
+<div v-else class="calendar-container">
+    <div class="notes-list-view">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" v-model="searchKeyword" placeholder="🔍 搜索笔记内容…" @input="onSearch" />
+            <div class="filter-group">
+                <select v-model="filterMode" @change="onSearch">
+                    <option value="all">全部模式</option>
+                    <option value="work">💼 工作</option>
+                    <option value="life">🌸 生活</option>
+                </select>
+                <input type="date" v-model="filterDateFrom" @change="onSearch" title="开始日期" />
+                <span style="color:#999; font-size:0.8rem;">至</span>
+                <input type="date" v-model="filterDateTo" @change="onSearch" title="结束日期" />
+                <button @click="clearFilters" style="background:#f0f0f0;border:1px solid #ddd;border-radius:30px;padding:6px 16px;font-size:0.8rem;cursor:pointer;">清除</button>
+            </div>
+        </div>
+
+        <!-- 统计 -->
+        <div class="stats" v-if="!loadingList">
+            共 <strong>{{ filteredNotes.length }}</strong> 条笔记
+            <span v-if="searchKeyword">，关键词 “{{ searchKeyword }}”</span>
+            <span v-if="filterMode !== 'all'">，模式 “{{ filterMode === 'work' ? '工作' : '生活' }}”</span>
+        </div>
+
+        <!-- 加载中 -->
+        <div v-if="loadingList" class="loading"><div class="spinner"></div><p style="margin-top:12px;">加载中…</p></div>
+
+        <!-- 笔记列表 -->
+        <template v-else>
+            <div v-if="paginatedNotes.length === 0" class="empty-state">
+                <div class="icon">📭</div>
+                <p>没有找到匹配的笔记</p>
+                <p style="font-size:0.85rem;margin-top:4px;">试试调整搜索关键词或筛选条件</p>
+            </div>
+            <div v-for="(item, idx) in paginatedNotes" :key="idx" class="note-item" @click="openEditor(item.date, item.note)">
+                <div class="note-info">
+                    <div class="note-date">{{ item.date }}</div>
+                    <div class="note-content">{{ item.note }}</div>
+                    <span class="note-mode-tag" :class="item.mode">{{ item.mode === 'work' ? '💼 工作' : '🌸 生活' }}</span>
+                </div>
+                <div class="note-actions" @click.stop>
+                    <button @click="openEditor(item.date, item.note)" title="编辑">✏️</button>
+                    <button class="delete" @click="deleteNote(item.date)" title="删除">🗑️</button>
+                </div>
+            </div>
+
+            <!-- 分页 -->
+            <div class="pagination" v-if="totalPages > 1">
+                <button @click="prevPage" :disabled="currentPage === 1">‹</button>
+                <button v-for="p in pageNumbers" :key="p" :class="{ active: p === currentPage }"
+                @click="goPage(p)">
+                {{ p }}
+            </button>
+            <button @click="nextPage" :disabled="currentPage === totalPages">›</button>
+        </div>
+    </template>
+</div>
+</div>
+
+<!-- ====== 笔记编辑模态框 ====== -->
+<div v-if="showModal" class="modal-mask" @click.self="closeModal">
+    <div class="modal-container">
+        <div class="modal-header">
+            <span class="modal-title">📝 {{ modalDate }}</span>
+            <button class="close-btn" @click="closeModal">✕</button>
+        </div>
+        <textarea v-model="modalContent" class="note-editor" placeholder="输入备忘录内容…" @keydown.ctrl.enter="saveModalNote"></textarea>
+        <div class="modal-actions">
+            <button class="cancel" @click="closeModal">取消</button>
+            <button class="save" @click="saveModalNote">💾 保存</button>
+        </div>
+    </div>
+</div>
+</template>
+</div>
+
+<script>
+    (function() {
+        const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+        const supabase = window.supabase;
+        const dayjs = window.dayjs;
+
+        // ---------- Supabase 配置 ----------
+        const SUPABASE_URL = 'https://axvrvqivbxxrniaabogy.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_ufXYQAWGDWzCs5Vyb8zW1Q_AvWfxz9e';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ---------- 扁平表名 ----------
+        const TABLE_FLAT = 'calendar_notes_flat';
+
+        const app = createApp({
+            setup() {
+                // ---------- 认证状态机 ----------
+                // 'login' | 'register' | 'verify'
+                const authStep = ref('login');
+                const loggedIn = ref(false);
+
+                // 登录
+                const loginEmail = ref('');
+                const loginPassword = ref('');
+                const loginError = ref('');
+                const loginSuccess = ref('');
+                const loggingIn = ref(false);
+
+                // 注册
+                const regEmail = ref('');
+                const regPassword = ref('');
+                const regPassword2 = ref('');
+                const regError = ref('');
+                const registering = ref(false);
+
+                // 验证码
+                const otpEmail = ref('');       // 验证码发往哪个邮箱（= regEmail）
+                const otpCode = ref('');
+                const otpError = ref('');
+                const otpSuccess = ref('');
+                const verifying = ref(false);
+                const resendCountdown = ref(0);
+                let resendTimer = null;
+
+                // ---------- 当前登录用户 ID ----------
+                const currentUserId = ref('');
+
+                // ---------- 应用状态 ----------
+                const currentView = ref('calendar');
+                const viewMode = ref('week');
+                const noteMode = ref('work');
+                const currentDate = ref(dayjs());
+                const notes = ref({});
+                const loading = ref(false);
+
+                // ---------- 模态框 ----------
+                const showModal = ref(false);
+                const modalDate = ref('');
+                const modalContent = ref('');
+
+                // ---------- 笔记列表 ----------
+                const searchKeyword = ref('');
+                const filterMode = ref('all');
+                const filterDateFrom = ref('');
+                const filterDateTo = ref('');
+                const currentPage = ref(1);
+                const pageSize = ref(15);
+                const loadingList = ref(false);
+
+                // ---------- 辅助：周起始 ----------
+                const startOfWeek = (date) => {
+                    const d = dayjs(date);
+                    const day = d.day();
+                    const diff = day === 0 ? -6 : 1 - day;
+                    return d.add(diff, 'day');
+                };
+
+                // ---------- 本地缓存 ----------
+                const cacheKey = () => `notes_${currentUserId.value}_${noteMode.value}`;
+                const loadFromCache = () => {
+                    const cached = localStorage.getItem(cacheKey());
+                    if (cached) {
+                        try { notes.value = JSON.parse(cached); } catch { notes.value = {}; }
+                        return true;
+                    }
+                    notes.value = {};
+                    return false;
+                };
+                const saveToCache = () => {
+                    localStorage.setItem(cacheKey(), JSON.stringify(notes.value));
+                };
+
+                // ---------- 数据加载 ----------
+                const loadNotes = async () => {
+                    if (!currentUserId.value) {
+                        notes.value = {};
+                        return;
+                    }
+                    loading.value = true;
+                    try {
+                        const { data, error } = await supabaseClient
+                            .from(TABLE_FLAT)
+                            .select('date, content')
+                            .eq('user_id', currentUserId.value)
+                            .eq('tag', noteMode.value)
+                            .order('date', { ascending: true });
+
+                        if (error) throw error;
+
+                        if (data && data.length > 0) {
+                            const obj = {};
+                            for (const row of data) {
+                                obj[row.date] = row.content;
+                            }
+                            notes.value = obj;
+                        } else {
+                            loadFromCache();
+                        }
+                        saveToCache();
+                    } catch (e) {
+                        console.warn('加载云端失败，使用本地缓存', e);
+                        loadFromCache();
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // ---------- 保存 ----------
+                const saveNotes = async () => {
+                    if (!currentUserId.value) return;
+                    saveToCache();
+                    try {
+                        const { error: delErr } = await supabaseClient
+                            .from(TABLE_FLAT)
+                            .delete()
+                            .eq('user_id', currentUserId.value)
+                            .eq('tag', noteMode.value);
+                        if (delErr) throw delErr;
+
+                        const now = new Date().toISOString();
+                        const rows = Object.entries(notes.value)
+                            .filter(([_, content]) => content != null && String(content).trim() !== '')
+                            .map(([date, content]) => ({
+                                user_id: currentUserId.value,
+                                date: date,
+                                tag: noteMode.value,
+                                content: String(content),
+                                updated_at: now
+                            }));
+
+                        if (rows.length === 0) return;
+
+                        const BATCH = 500;
+                        for (let i = 0; i < rows.length; i += BATCH) {
+                            const batch = rows.slice(i, i + BATCH);
+                            const { error: insErr } = await supabaseClient
+                                .from(TABLE_FLAT)
+                                .insert(batch);
+                            if (insErr) throw insErr;
+                        }
+                    } catch (e) {
+                        console.error('云端保存失败，数据已保留本地', e);
+                    }
+                };
+
+                // ---------- 登录后统一处理 ----------
+                const enterApp = async (userId) => {
+                    loggedIn.value = true;
+                    currentUserId.value = userId;
+                    await loadNotes();
+                    searchKeyword.value = '';
+                    filterMode.value = 'all';
+                    filterDateFrom.value = '';
+                    filterDateTo.value = '';
+                    currentPage.value = 1;
+                };
+
+                // ---------- 登录 ----------
+                const login = async () => {
+                    if (!loginEmail.value || !loginPassword.value) {
+                        loginError.value = '请输入邮箱和密码';
+                        return;
+                    }
+                    loggingIn.value = true;
+                    loginError.value = '';
+                    loginSuccess.value = '';
+                    try {
+                        const { data, error } = await supabaseClient.auth.signInWithPassword({
+                            email: loginEmail.value,
+                            password: loginPassword.value
+                        });
+                        if (error) throw error;
+                        await enterApp(data.user.id);
+                    } catch (err) {
+                        const msg = err.message || '';
+                        if (msg.toLowerCase().includes('email not confirmed')) {
+                            loginError.value = '邮箱还没验证。请先完成注册验证码验证。';
+                        } else {
+                            loginError.value = msg || '登录失败，请检查邮箱和密码';
+                        }
+                    } finally {
+                        loggingIn.value = false;
+                    }
+                };
+
+                // ---------- 倒计时管理 ----------
+                const startResendCountdown = (seconds = 60) => {
+                    resendCountdown.value = seconds;
+                    if (resendTimer) clearInterval(resendTimer);
+                    resendTimer = setInterval(() => {
+                        resendCountdown.value--;
+                        if (resendCountdown.value <= 0) {
+                            clearInterval(resendTimer);
+                            resendTimer = null;
+                        }
+                    }, 1000);
+                };
+
+                // ---------- 注册（第一步：发送验证码）----------
+                const register = async () => {
+                    regError.value = '';
+
+                    if (!regEmail.value || !regPassword.value) {
+                        regError.value = '请输入邮箱和密码';
+                        return;
+                    }
+                    if (regPassword.value.length < 6) {
+                        regError.value = '密码至少 6 位';
+                        return;
+                    }
+                    if (regPassword.value !== regPassword2.value) {
+                        regError.value = '两次输入的密码不一致';
+                        return;
+                    }
+
+                    registering.value = true;
+                    try {
+                        const { data, error } = await supabaseClient.auth.signUp({
+                            email: regEmail.value,
+                            password: regPassword.value
+                        });
+                        if (error) throw error;
+
+                        // 情况 A：项目关闭了邮箱验证 → 直接有 session
+                        if (data && data.session && data.user) {
+                            await enterApp(data.user.id);
+                            return;
+                        }
+
+                        // 情况 B：需要 OTP 验证 → 切到验证码步骤
+                        otpEmail.value = regEmail.value;
+                        otpCode.value = '';
+                        otpError.value = '';
+                        otpSuccess.value = '';
+                        authStep.value = 'verify';
+                        startResendCountdown(60);
+                    } catch (err) {
+                        const msg = err.message || '';
+                        const low = msg.toLowerCase();
+                        if (low.includes('already') && low.includes('registered')) {
+                            regError.value = '这个邮箱已经注册过了，请直接登录';
+                        } else if (low.includes('rate limit')) {
+                            regError.value = '发送太频繁了，Supabase 每小时最多发几封邮件，请等一小时后再试。';
+                        } else if (low.includes('password')) {
+                            regError.value = '密码不符合要求：' + msg;
+                        } else {
+                            regError.value = msg || '注册失败';
+                        }
+                    } finally {
+                        registering.value = false;
+                    }
+                };
+
+                // ---------- 验证码校验 ----------
+                const verifyOtp = async () => {
+                    otpError.value = '';
+                    otpSuccess.value = '';
+
+                    const code = (otpCode.value || '').trim();
+                    if (!/^\d{6}$/.test(code)) {
+                        otpError.value = '请输入 6 位数字验证码';
+                        return;
+                    }
+
+                    verifying.value = true;
+                    try {
+                        const { data, error } = await supabaseClient.auth.verifyOtp({
+                            email: otpEmail.value,
+                            token: code,
+                            type: 'signup'
+                        });
+                        if (error) throw error;
+
+                        // 验证成功后应该拿到 session
+                        if (data && data.session && data.user) {
+                            otpSuccess.value = '验证成功，正在进入…';
+                            // 清理倒计时
+                            if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
+                            resendCountdown.value = 0;
+                            await enterApp(data.user.id);
+                        } else {
+                            otpError.value = '验证成功但没有拿到会话，请返回登录页手动登录';
+                        }
+                    } catch (err) {
+                        const msg = err.message || '';
+                        const low = msg.toLowerCase();
+                        if (low.includes('expired')) {
+                            otpError.value = '验证码已过期，请点击下方重新发送';
+                        } else if (low.includes('invalid') || low.includes('token')) {
+                            otpError.value = '验证码错误，请检查后重试';
+                        } else if (low.includes('rate limit')) {
+                            otpError.value = '验证太频繁，稍后再试';
+                        } else {
+                            otpError.value = msg || '验证失败';
+                        }
+                    } finally {
+                        verifying.value = false;
+                    }
+                };
+
+                // ---------- 重新发送验证码 ----------
+                const resendOtp = async () => {
+                    if (resendCountdown.value > 0) return;
+                    otpError.value = '';
+                    otpSuccess.value = '';
+                    try {
+                        // 用 signUp 重发会报"已注册"，改用 resend
+                        const { error } = await supabaseClient.auth.resend({
+                            type: 'signup',
+                            email: otpEmail.value
+                        });
+                        if (error) throw error;
+                        otpSuccess.value = '验证码已重新发送，请查收邮箱';
+                        startResendCountdown(60);
+                    } catch (err) {
+                        const msg = err.message || '';
+                        if (msg.toLowerCase().includes('rate limit')) {
+                            otpError.value = '发送太频繁，请稍后再试';
+                        } else {
+                            otpError.value = msg || '重发失败';
+                        }
+                    }
+                };
+
+                // ---------- 页面跳转 ----------
+                const goRegister = () => {
+                    authStep.value = 'register';
+                    loginError.value = '';
+                    loginSuccess.value = '';
+                    regEmail.value = loginEmail.value;
+                    regError.value = '';
+                };
+                const goLogin = () => {
+                    authStep.value = 'login';
+                    regError.value = '';
+                    otpError.value = '';
+                    otpSuccess.value = '';
+                    otpCode.value = '';
+                    if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
+                    resendCountdown.value = 0;
+                };
+
+                // ---------- 退出 ----------
+                const logout = async () => {
+                    await supabaseClient.auth.signOut();
+                    loggedIn.value = false;
+                    loginEmail.value = '';
+                    loginPassword.value = '';
+                    notes.value = {};
+                    currentUserId.value = '';
+                    authStep.value = 'login';
+                    otpCode.value = '';
+                    otpEmail.value = '';
+                    otpError.value = '';
+                    otpSuccess.value = '';
+                };
+
+                // ---------- 模式切换 ----------
+                const toggleMode = async () => {
+                    await saveNotes();
+                    noteMode.value = noteMode.value === 'work' ? 'life' : 'work';
+                    await loadNotes();
+                    currentPage.value = 1;
+                };
+
+                // ---------- 日历导航 ----------
+                const goToday = async () => {
+                    await saveNotes();
+                    currentDate.value = dayjs();
+                };
+                const previous = async () => {
+                    await saveNotes();
+                    if (viewMode.value === 'week') currentDate.value = currentDate.value.subtract(2, 'week');
+                    else currentDate.value = currentDate.value.subtract(1, 'month');
+                };
+                const next = async () => {
+                    await saveNotes();
+                    if (viewMode.value === 'week') currentDate.value = currentDate.value.add(2, 'week');
+                    else currentDate.value = currentDate.value.add(1, 'month');
+                };
+                const toggleView = () => {
+                    viewMode.value = viewMode.value === 'week' ? 'month' : 'week';
+                };
+                const switchView = (view) => {
+                    currentView.value = view;
+                    if (view === 'list') currentPage.value = 1;
+                };
+
+                // ---------- 标题 ----------
+                const titleText = computed(() => {
+                    if (viewMode.value === 'week') {
+                        const start = startOfWeek(currentDate.value);
+                        const end = start.add(13, 'day');
+                        return `${start.format('YYYY年MM月DD日')} - ${end.format('YYYY年MM月DD日')}`;
+                    }
+                    return currentDate.value.format('YYYY年MM月');
+                });
+
+                // ---------- 周视图数据 ----------
+                const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+                const buildWeekCells = (offset) => {
+                    const start = startOfWeek(currentDate.value).add(offset, 'day');
+                    const cells = [];
+                    const todayStr = dayjs().format('YYYY-MM-DD');
+                    for (let i = 0; i < 7; i++) {
+                        const date = start.add(i, 'day');
+                        const dateStr = date.format('YYYY-MM-DD');
+                        cells.push({
+                            date: dateStr,
+                            day: date.date(),
+                            month: date.month() + 1,
+                            yearShort: date.format('YY'),
+                            isToday: dateStr === todayStr,
+                            note: notes.value[dateStr] || ''
+                        });
+                    }
+                    return cells;
+                };
+                const week1 = computed(() => buildWeekCells(0));
+                const week2 = computed(() => buildWeekCells(7));
+
+                // ---------- 月视图数据 ----------
+                const monthWeeks = computed(() => {
+                    const year = currentDate.value.year();
+                    const month = currentDate.value.month();
+                    const firstDay = dayjs(new Date(year, month, 1));
+                    const start = startOfWeek(firstDay);
+                    const weeks = [];
+                    const todayStr = dayjs().format('YYYY-MM-DD');
+                    for (let w = 0; w < 6; w++) {
+                        const week = [];
+                        for (let d = 0; d < 7; d++) {
+                            const date = start.add(w * 7 + d, 'day');
+                            const dateStr = date.format('YYYY-MM-DD');
+                            const note = notes.value[dateStr] || '';
+                            const notePreview = note.length > 10 ? note.slice(0, 8) + '…' : note;
+                            week.push({
+                                date: dateStr,
+                                day: date.date(),
+                                isCurrentMonth: date.month() === month,
+                                isToday: dateStr === todayStr,
+                                note: note,
+                                notePreview: notePreview
+                            });
+                        }
+                        weeks.push(week);
+                    }
+                    return weeks;
+                });
+
+                // ---------- 笔记编辑器 ----------
+                const openEditor = (date, content) => {
+                    modalDate.value = date;
+                    modalContent.value = content || '';
+                    showModal.value = true;
+                };
+                const closeModal = () => { showModal.value = false; };
+                const saveModalNote = async () => {
+                    const trimmed = modalContent.value.trim();
+                    if (trimmed) notes.value[modalDate.value] = trimmed;
+                    else delete notes.value[modalDate.value];
+                    await saveNotes();
+                    closeModal();
+                    if (currentView.value === 'list') currentPage.value = 1;
+                };
+
+                // ---------- 笔记列表 ----------
+                const allNotesArray = computed(() => {
+                    const result = [];
+                    for (const [date, note] of Object.entries(notes.value)) {
+                        if (note && note.trim()) {
+                            result.push({
+                                date: date,
+                                note: note.trim(),
+                                mode: noteMode.value
+                            });
+                        }
+                    }
+                    result.sort((a, b) => b.date.localeCompare(a.date));
+                    return result;
+                });
+
+                const filteredNotes = computed(() => {
+                    let list = allNotesArray.value;
+                    if (searchKeyword.value.trim()) {
+                        const kw = searchKeyword.value.trim().toLowerCase();
+                        list = list.filter(item => item.note.toLowerCase().includes(kw));
+                    }
+                    if (filterDateFrom.value) {
+                        list = list.filter(item => item.date >= filterDateFrom.value);
+                    }
+                    if (filterDateTo.value) {
+                        list = list.filter(item => item.date <= filterDateTo.value);
+                    }
+                    return list;
+                });
+
+                const totalPages = computed(() => Math.ceil(filteredNotes.value.length / pageSize.value));
+                const paginatedNotes = computed(() => {
+                    const start = (currentPage.value - 1) * pageSize.value;
+                    const end = start + pageSize.value;
+                    return filteredNotes.value.slice(start, end);
+                });
+
+                const pageNumbers = computed(() => {
+                    const pages = [];
+                    const total = totalPages.value;
+                    const current = currentPage.value;
+                    if (total <= 7) {
+                        for (let i = 1; i <= total; i++) pages.push(i);
+                    } else {
+                        pages.push(1);
+                        if (current > 3) pages.push('…');
+                        const startP = Math.max(2, current - 1);
+                        const endP = Math.min(total - 1, current + 1);
+                        for (let i = startP; i <= endP; i++) pages.push(i);
+                        if (current < total - 2) pages.push('…');
+                        pages.push(total);
+                    }
+                    return pages;
+                });
+
+                const onSearch = () => { currentPage.value = 1; };
+                const clearFilters = () => {
+                    searchKeyword.value = '';
+                    filterMode.value = 'all';
+                    filterDateFrom.value = '';
+                    filterDateTo.value = '';
+                    currentPage.value = 1;
+                };
+                const prevPage = () => { if (currentPage.value > 1) currentPage.value--; };
+                const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++; };
+                const goPage = (p) => { if (p !== '…') currentPage.value = p; };
+
+                const deleteNote = async (date) => {
+                    if (!confirm(`确定要删除 ${date} 的笔记吗？`)) return;
+                    delete notes.value[date];
+                    await saveNotes();
+                    currentPage.value = 1;
+                };
+
+                // ---------- 挂载 / 卸载 ----------
+                onMounted(() => {
+                    // 保持手动登录
+                });
+                onUnmounted(() => {
+                    if (resendTimer) clearInterval(resendTimer);
+                });
+
+                // ---------- 返回 ----------
+                return {
+                    // 认证状态机
+                    authStep,
+                    loggedIn,
+                    // 登录
+                    loginEmail, loginPassword, loginError, loginSuccess, loggingIn,
+                    login,
+                    // 注册
+                    regEmail, regPassword, regPassword2, regError, registering,
+                    register, goRegister, goLogin,
+                    // 验证码
+                    otpEmail, otpCode, otpError, otpSuccess, verifying,
+                    resendCountdown, verifyOtp, resendOtp,
+                    // 退出
+                    logout, currentUserId,
+                    // 应用状态
+                    currentView, viewMode, noteMode, currentDate, notes, loading,
+                    showModal, modalDate, modalContent,
+                    // 日历
+                    weekDays, titleText, week1, week2, monthWeeks,
+                    toggleView, switchView, goToday, previous, next, toggleMode,
+                    // 编辑器
+                    openEditor, closeModal, saveModalNote,
+                    // 列表
+                    searchKeyword, filterMode, filterDateFrom, filterDateTo,
+                    currentPage, pageSize, loadingList,
+                    filteredNotes, paginatedNotes, totalPages, pageNumbers,
+                    onSearch, clearFilters, prevPage, nextPage, goPage, deleteNote,
+                };
+            }
+        });
+
+        app.mount('#app');
+    })();
+</script>
+</body>
+</html>
