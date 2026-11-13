@@ -119,8 +119,8 @@
 // ============================================================
 // ⚠️ 核心配置：请务必把这里的 Key 换成你真实的 Anon Key！
 // ============================================================
-const SUPABASE_URL = 'https://axvrvqivbxxrniaabogy.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_ufXYQAWGDWzCs5Vyb8zW1Q_AvWfxz9e'; // 替换为你的 anon key
+const SUPABASE_URL = 'https://xswnsgwnzjgojnfzyrcs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhzd25zZ3duempnb2puZnp5cmNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTUwMzcyMDAsImV4cCI6MjAzMDYxMzIwMH0.xxxxxx'; // 替换为你的 anon key
 
 let supabaseClient;
 try {
@@ -136,7 +136,7 @@ let totalCount = 0;
 let selectedQuestions = new Map();
 
 // ============================================================
-// 登录与鉴权（挂载到 window 确保 onclick 能找到）
+// 登录与鉴权
 // ============================================================
 window.doLogin = async function() {
   if (!supabaseClient) return alert('Supabase 初始化失败，无法登录');
@@ -154,7 +154,6 @@ window.doLogin = async function() {
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) throw error;
     
-    // 登录成功
     document.getElementById('loginMask').style.display = 'none';
     window.loadQuestions(1);
   } catch (error) {
@@ -178,7 +177,7 @@ async function checkAuth() {
 }
 
 // ============================================================
-// 加载题目 (挂载到 window)
+// 加载题目 (核心逻辑：重组题族树状展示)
 // ============================================================
 window.loadQuestions = async function(page) {
   currentPage = page;
@@ -197,7 +196,7 @@ window.loadQuestions = async function(page) {
   if (diff) query = query.eq('difficulty', parseInt(diff));
 
   const from = (page - 1) * pageSize;
-  query = query.range(from, from + pageSize - 1).order('id', { ascending: false });
+  query = query.range(from, from + pageSize - 1).order('id', { ascending: true });
 
   try {
     const { data, count, error } = await query;
@@ -213,8 +212,25 @@ window.loadQuestions = async function(page) {
       return;
     }
 
-    let html = '';
+    // 1. 建立映射表
+    const qMap = {};
+    const childrenMap = {}; 
+    const roots = []; 
+
+    data.forEach(q => { qMap[q.id] = q; });
+
+    // 2. 分配父子关系
     data.forEach(q => {
+      if (q.variant_of_id && qMap[q.variant_of_id]) {
+        if (!childrenMap[q.variant_of_id]) childrenMap[q.variant_of_id] = [];
+        childrenMap[q.variant_of_id].push(q);
+      } else {
+        roots.push(q);
+      }
+    });
+
+    // 3. 生成卡片 HTML 的函数
+    function renderCard(q, isChild = false) {
       const isChecked = selectedQuestions.has(q.id);
       
       let tagsHtml = '';
@@ -226,14 +242,22 @@ window.loadQuestions = async function(page) {
 
       const imgHtml = q.image_path ? `<img src="${q.image_path}" class="q-img">` : '';
       const safeContent = (q.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      
+      const marginStyle = isChild ? 'margin-left: 40px; border-left: 4px solid #fbbf24; background: #fffbeb;' : '';
+      const badge = isChild 
+        ? `<span style="background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px; font-size:12px;">↳ 变式</span>` 
+        : (childrenMap[q.id] ? `<span style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-size:12px;">👑 母题</span>` : '');
 
-      html += `
-        <div class="q-card ${isChecked ? 'selected' : ''}" id="card_${q.id}">
+      q._parsedContent = safeContent; 
+      window[q.id] = q; 
+
+      return `
+        <div class="q-card ${isChecked ? 'selected' : ''}" id="card_${q.id}" style="${marginStyle}">
           <input type="checkbox" class="q-checkbox" data-id="${q.id}" ${isChecked ? 'checked' : ''} onchange="window.toggleSelect(${q.id})">
           <div class="q-body">
-            <div class="q-content">${safeContent}</div>
+            <div class="q-content">${badge} ${safeContent}</div>
             ${imgHtml}
-            <div class="q-meta">
+            <div class="q-meta" style="margin-top: 10px;">
               <span>ID: ${q.id}</span>
               <span>${q.question_type || '解答题'}</span>
               <span>${'★'.repeat(q.difficulty || 3)}</span>
@@ -242,9 +266,17 @@ window.loadQuestions = async function(page) {
           </div>
         </div>
       `;
-      
-      q._parsedContent = safeContent; 
-      window[q.id] = q; 
+    }
+
+    // 4. 开始渲染
+    let html = '';
+    roots.forEach(rootQ => {
+      html += renderCard(rootQ, false);
+      if (childrenMap[rootQ.id]) {
+        childrenMap[rootQ.id].forEach(childQ => {
+          html += renderCard(childQ, true);
+        });
+      }
     });
 
     listHost.innerHTML = html;
@@ -256,7 +288,7 @@ window.loadQuestions = async function(page) {
       });
     }
   } catch (error) {
-    listHost.innerHTML = `<div style="text-align:center; color:red; padding:20px;">加载失败: ${error.message} (请检查是否配置了 RLS 允许查询策略)</div>`;
+    listHost.innerHTML = `<div style="text-align:center; color:red; padding:20px;">加载失败: ${error.message}</div>`;
   }
 }
 
