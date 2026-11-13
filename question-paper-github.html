@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>云端题库 · 智能组卷</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; background: #f0f2f5; color: #333; display: flex; height: 100vh; overflow: hidden; }
+  
+  .login-mask { position: fixed; inset: 0; background: #1e293b; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .login-box { background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 360px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+  .login-box h2 { margin: 0 0 20px; text-align: center; color: #1e293b; }
+  .login-box input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; outline: none; }
+  .login-box button { width: 100%; padding: 10px; background: #2d6cdf; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+  .login-box button:disabled { background: #94a3b8; cursor: not-allowed; }
+
+  .main-content { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .header h1 { margin: 0; font-size: 20px; color: #1e293b; }
+  
+  .filters { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .filters input, .filters select { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+  .filters input[type="text"] { flex: 1; min-width: 150px; }
+  .filters button { padding: 8px 16px; background: #2d6cdf; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+
+  .q-card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 15px; display: flex; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-left: 4px solid transparent; }
+  .q-card.selected { border-left-color: #2d6cdf; background: #f8fbff; }
+  .q-checkbox { width: 20px; height: 20px; margin-top: 4px; cursor: pointer; }
+  .q-body { flex: 1; }
+  .q-content { font-size: 15px; line-height: 1.8; margin-bottom: 10px; }
+  .q-meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: #666; }
+  .q-meta span { background: #f1f5f9; padding: 2px 8px; border-radius: 10px; }
+  .q-img { max-height: 150px; margin-top: 10px; border-radius: 6px; }
+
+  .sidebar { width: 360px; background: #fff; border-left: 1px solid #ddd; display: flex; flex-direction: column; }
+  .cart-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+  .cart-header h2 { margin: 0; font-size: 16px; }
+  .cart-list { flex: 1; overflow-y: auto; padding: 15px; }
+  .cart-item { background: #fff; padding: 10px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+  .cart-item button { background: #fee2e2; color: #e74c3c; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+  .cart-footer { padding: 20px; border-top: 1px solid #eee; }
+  .cart-footer input { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 10px; }
+  .btn-export { width: 100%; padding: 12px; background: #27ae60; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+
+  .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+  .pagination button { padding: 6px 12px; border: 1px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; }
+  .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+  <div class="login-mask" id="loginMask">
+    <div class="login-box">
+      <h2>☁️ 云端题库登录</h2>
+      <input type="email" id="loginEmail" placeholder="请输入邮箱">
+      <input type="password" id="loginPassword" placeholder="请输入密码" onkeypress="if(event.key==='Enter') window.doLogin()">
+      <button onclick="window.doLogin()" id="loginBtn">登 录</button>
+      <div id="loginErr" style="color:red; font-size:12px; text-align:center; margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="header">
+      <h1>📄 云端题库组卷系统</h1>
+      <button onclick="window.doLogout()" style="padding: 6px 12px; border:none; background:#e2e8f0; border-radius:6px; cursor:pointer;">退出登录</button>
+    </div>
+
+    <div class="filters">
+      <input type="text" id="fKeyword" placeholder="搜索题干/答案...">
+      <select id="fType">
+        <option value="">全部题型</option>
+        <option value="单选">单选</option>
+        <option value="多选">多选</option>
+        <option value="填空">填空</option>
+        <option value="解答">解答</option>
+      </select>
+      <select id="fDifficulty">
+        <option value="">全部难度</option>
+        <option value="1">★ 1星</option>
+        <option value="2">★★ 2星</option>
+        <option value="3">★★★ 3星</option>
+        <option value="4">★★★★ 4星</option>
+        <option value="5">★★★★★ 5星</option>
+      </select>
+      <button onclick="window.loadQuestions(1)">搜索</button>
+    </div>
+
+    <div id="questionList">
+      <div style="text-align:center; padding:40px; color:#888;">加载中...</div>
+    </div>
+
+    <div class="pagination">
+      <button id="btnPrev" onclick="window.changePage(-1)" disabled>上一页</button>
+      <span id="pageInfo" style="line-height:30px; font-size:14px;">第 1 页</span>
+      <button id="btnNext" onclick="window.changePage(1)" disabled>下一页</button>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="cart-header">
+      <h2>已选题目 (<span id="cartCount">0</span>)</h2>
+      <button onclick="window.clearCart()" style="border:none; background:none; color:#e74c3c; cursor:pointer;">清空</button>
+    </div>
+    <div class="cart-list" id="cartList">
+      <div style="text-align:center; color:#888; margin-top:20px; font-size:14px;">暂无选中题目</div>
+    </div>
+    <div class="cart-footer">
+      <input type="text" id="paperTitle" placeholder="试卷标题" value="云端组卷测试">
+      <button class="btn-export" onclick="window.exportWord()">导出 Word 试卷</button>
+    </div>
+  </div>
+
+<script>
+// ============================================================
+// ⚠️ 核心配置：请务必把这里的 Key 换成你真实的 Anon Key！
+// ============================================================
+const SUPABASE_URL = 'https://axvrvqivbxxrniaabogy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ufXYQAWGDWzCs5Vyb8zW1Q_AvWfxz9e'; // 替换为你的 anon key
+
+let supabaseClient;
+try {
+  if (!window.supabase) throw new Error("Supabase SDK 未加载，请检查网络或 CDN 链接");
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (e) {
+  alert("Supabase 初始化失败: " + e.message);
+}
+
+let currentPage = 1;
+const pageSize = 10;
+let totalCount = 0;
+let selectedQuestions = new Map();
+
+// ============================================================
+// 登录与鉴权（挂载到 window 确保 onclick 能找到）
+// ============================================================
+window.doLogin = async function() {
+  if (!supabaseClient) return alert('Supabase 初始化失败，无法登录');
+  
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginErr');
+  
+  if (!email || !password) return err.textContent = '请输入邮箱和密码';
+  btn.disabled = true; btn.textContent = '登录中...';
+  err.textContent = '';
+  
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    
+    // 登录成功
+    document.getElementById('loginMask').style.display = 'none';
+    window.loadQuestions(1);
+  } catch (error) {
+    err.textContent = error.message || '登录失败，请检查账号密码';
+    btn.disabled = false; btn.textContent = '登 录';
+  }
+}
+
+window.doLogout = async function() {
+  if (supabaseClient) await supabaseClient.auth.signOut();
+  location.reload();
+}
+
+async function checkAuth() {
+  if (!supabaseClient) return;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) {
+    document.getElementById('loginMask').style.display = 'none';
+    window.loadQuestions(1);
+  }
+}
+
+// ============================================================
+// 加载题目 (挂载到 window)
+// ============================================================
+window.loadQuestions = async function(page) {
+  currentPage = page;
+  const kw = document.getElementById('fKeyword').value.trim();
+  const type = document.getElementById('fType').value;
+  const diff = document.getElementById('fDifficulty').value;
+  const listHost = document.getElementById('questionList');
+  
+  listHost.innerHTML = '<div style="text-align:center; padding:40px; color:#888;">加载中...</div>';
+
+  let query = supabaseClient.from('questions')
+    .select('*, question_tags(tags(name, category))', { count: 'exact' });
+
+  if (kw) query = query.ilike('content', `%${kw}%`);
+  if (type) query = query.eq('question_type', type);
+  if (diff) query = query.eq('difficulty', parseInt(diff));
+
+  const from = (page - 1) * pageSize;
+  query = query.range(from, from + pageSize - 1).order('id', { ascending: false });
+
+  try {
+    const { data, count, error } = await query;
+    if (error) throw error;
+
+    totalCount = count || 0;
+    document.getElementById('pageInfo').textContent = `第 ${page} 页 / 共 ${Math.ceil(totalCount/pageSize) || 1} 页`;
+    document.getElementById('btnPrev').disabled = page <= 1;
+    document.getElementById('btnNext').disabled = page >= Math.ceil(totalCount/pageSize);
+
+    if (!data || data.length === 0) {
+      listHost.innerHTML = '<div style="text-align:center; padding:40px; color:#888;">没有找到符合条件的题目</div>';
+      return;
+    }
+
+    let html = '';
+    data.forEach(q => {
+      const isChecked = selectedQuestions.has(q.id);
+      
+      let tagsHtml = '';
+      if (q.question_tags && q.question_tags.length > 0) {
+        q.question_tags.forEach(qt => {
+          if (qt.tags) tagsHtml += `<span>${qt.tags.name}</span>`;
+        });
+      }
+
+      const imgHtml = q.image_path ? `<img src="${q.image_path}" class="q-img">` : '';
+      const safeContent = (q.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      html += `
+        <div class="q-card ${isChecked ? 'selected' : ''}" id="card_${q.id}">
+          <input type="checkbox" class="q-checkbox" data-id="${q.id}" ${isChecked ? 'checked' : ''} onchange="window.toggleSelect(${q.id})">
+          <div class="q-body">
+            <div class="q-content">${safeContent}</div>
+            ${imgHtml}
+            <div class="q-meta">
+              <span>ID: ${q.id}</span>
+              <span>${q.question_type || '解答题'}</span>
+              <span>${'★'.repeat(q.difficulty || 3)}</span>
+              ${tagsHtml}
+            </div>
+          </div>
+        </div>
+      `;
+      
+      q._parsedContent = safeContent; 
+      window[q.id] = q; 
+    });
+
+    listHost.innerHTML = html;
+    
+    if (window.renderMathInElement) {
+      window.renderMathInElement(listHost, {
+        delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }],
+        throwOnError: false
+      });
+    }
+  } catch (error) {
+    listHost.innerHTML = `<div style="text-align:center; color:red; padding:20px;">加载失败: ${error.message} (请检查是否配置了 RLS 允许查询策略)</div>`;
+  }
+}
+
+window.changePage = function(offset) {
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const target = currentPage + offset;
+  if (target >= 1 && target <= totalPages) window.loadQuestions(target);
+}
+
+// ============================================================
+// 组卷篮逻辑
+// ============================================================
+window.toggleSelect = function(id) {
+  const card = document.getElementById(`card_${id}`);
+  if (selectedQuestions.has(id)) {
+    selectedQuestions.delete(id);
+    card.classList.remove('selected');
+  } else {
+    selectedQuestions.set(id, window[id]);
+    card.classList.add('selected');
+  }
+  updateCart();
+}
+
+function updateCart() {
+  document.getElementById('cartCount').textContent = selectedQuestions.size;
+  const list = document.getElementById('cartList');
+  
+  if (selectedQuestions.size === 0) {
+    list.innerHTML = '<div style="text-align:center; color:#888; margin-top:20px; font-size:14px;">暂无选中题目</div>';
+    return;
+  }
+  
+  let html = '';
+  let idx = 1;
+  selectedQuestions.forEach((q) => {
+    const title = (q.content || '').slice(0, 20);
+    html += `
+      <div class="cart-item">
+        <div><b>${idx++}.</b> ${title}...</div>
+        <button onclick="window.removeFromCart(${q.id})">移除</button>
+      </div>
+    `;
+  });
+  list.innerHTML = html;
+}
+
+window.removeFromCart = function(id) {
+  selectedQuestions.delete(id);
+  const cb = document.querySelector(`.q-checkbox[data-id="${id}"]`);
+  if (cb) {
+    cb.checked = false;
+    document.getElementById(`card_${id}`).classList.remove('selected');
+  }
+  updateCart();
+}
+
+window.clearCart = function() {
+  selectedQuestions.clear();
+  document.querySelectorAll('.q-checkbox').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.q-card').forEach(c => c.classList.remove('selected'));
+  updateCart();
+}
+
+// ============================================================
+// 导出 Word
+// ============================================================
+window.exportWord = function() {
+  if (selectedQuestions.size === 0) return alert('请先选择题目');
+  const title = document.getElementById('paperTitle').value.trim() || '试卷';
+  
+  let html = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset="utf-8">
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+      <style>
+        body { font-family: "SimSun", "Microsoft YaHei"; padding: 20px; line-height: 1.8; }
+        img { max-width: 80%; }
+        .q-item { margin-bottom: 20px; }
+      </style>
+    </head>
+    <body>
+      <h1 style="text-align:center;">${title}</h1>
+  `;
+  
+  let idx = 1;
+  selectedQuestions.forEach(q => {
+    html += `<div class="q-item"><b>${idx++}.</b> ${q._parsedContent}`;
+    if (q.image_path) html += `<br><img src="${q.image_path}">`;
+    html += `</div>`;
+  });
+  
+  html += `</body></html>`;
+  
+  const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${title}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', () => {
+  checkAuth();
+});
+</script>
+</body>
+</html>
